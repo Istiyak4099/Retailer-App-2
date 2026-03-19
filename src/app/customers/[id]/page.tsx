@@ -48,14 +48,14 @@ import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
 
 const InfoRow = ({ label, value }: { label: string; value: string | number | undefined | null }) => (
-  <div className="flex justify-between py-2">
+  <div className="flex justify-between py-2 border-b last:border-0">
     <dt className="text-muted-foreground">{label}</dt>
     <dd className="font-semibold text-right">{value || 'N/A'}</dd>
   </div>
 );
 
 const SectionTitle = ({ children }: { children: React.ReactNode }) => (
-  <h3 className="text-lg font-semibold mt-4 mb-2">{children}</h3>
+  <h3 className="text-lg font-semibold mt-4 mb-2 text-primary border-l-4 border-primary pl-2">{children}</h3>
 );
 
 export default function CustomerDetailPage() {
@@ -124,19 +124,25 @@ export default function CustomerDetailPage() {
         
         let toastMessage = `Customer status changed to ${newStatus}.`;
         let toastTitle = "Status Updated";
+        let Icon = CheckCircle2;
+        let iconColor = "text-green-500";
         
         if (newStatus === 'locked') {
           toastTitle = "Device Locked";
           toastMessage = "Command executed successfully.";
+          Icon = Lock;
+          iconColor = "text-red-500";
         } else if (newStatus === 'unlocked') {
           toastTitle = "Device Unlocked";
           toastMessage = "Command executed successfully.";
+          Icon = Unlock;
+          iconColor = "text-green-500";
         }
 
         toast({
             title: (
               <div className="flex flex-col items-center gap-2">
-                <CheckCircle2 className="h-10 w-10 text-green-500" />
+                <Icon className={`h-10 w-10 ${iconColor}`} />
                 <span>{toastTitle}</span>
               </div>
             ),
@@ -192,7 +198,7 @@ export default function CustomerDetailPage() {
         toast({
           title: (
             <div className="flex flex-col items-center gap-2">
-              <CheckCircle2 className="h-10 w-10 text-green-500" />
+              <BellRing className="h-10 w-10 text-blue-500" />
               <span>Reminder Sent</span>
             </div>
           ),
@@ -278,25 +284,25 @@ export default function CustomerDetailPage() {
 
   return (
     <AppLayout title="Customer Details">
-      <div className="max-w-2xl mx-auto">
-        <Card className="shadow-lg rounded-xl overflow-hidden">
+      <div className="max-w-2xl mx-auto pb-10">
+        <Card className="shadow-lg rounded-xl overflow-hidden border-t-4 border-t-primary">
           <CardHeader className="bg-muted/30 p-4">
             <div className="flex items-center space-x-4">
-              <Avatar className="h-16 w-16 text-xl">
+              <Avatar className="h-16 w-16 text-xl border-2 border-primary">
                 <AvatarImage src={emiDetails?.live_photo || undefined} />
-                <AvatarFallback className="bg-primary text-primary-foreground">
+                <AvatarFallback className="bg-primary text-primary-foreground font-bold">
                   {getInitials(customer.full_name)}
                 </AvatarFallback>
               </Avatar>
               <div className="flex-1">
                 <div className="flex items-center justify-between">
-                    <CardTitle className="text-2xl">{customer.full_name}</CardTitle>
+                    <CardTitle className="text-xl md:text-2xl">{customer.full_name}</CardTitle>
                     <Badge variant={getStatusVariant(customer.status)} className="ml-auto uppercase text-[10px]">
                       {customer.status}
                     </Badge>
                 </div>
                 <div className="flex items-center text-muted-foreground mt-1 text-sm">
-                    <Phone className="h-3 w-3 mr-2" />
+                    <Phone className="h-3 w-3 mr-2 text-primary" />
                     <p>{customer.mobile_number}</p>
                 </div>
               </div>
@@ -304,7 +310,7 @@ export default function CustomerDetailPage() {
           </CardHeader>
 
           <CardContent className="p-4 md:p-6 space-y-4">
-            <dl className="divide-y text-sm">
+            <dl className="text-sm">
               <SectionTitle>Device Information</SectionTitle>
               <InfoRow label="Android ID" value={emiDetails?.android_id || customer.android_id} />
 
@@ -355,7 +361,8 @@ export default function CustomerDetailPage() {
             
           </CardContent>
         </Card>
-        <div className="grid grid-cols-2 lg:grid-cols-5 gap-2 mt-4">
+
+        <div className="grid grid-cols-2 gap-2 mt-6">
             <ActionButton
               status="locked"
               title="Confirm Device Lock"
@@ -363,7 +370,7 @@ export default function CustomerDetailPage() {
               buttonText="Lock"
               variant="destructive"
               icon={Lock}
-              className="w-full"
+              className="w-full h-12 text-base font-bold"
             />
              <ActionButton
               status="unlocked"
@@ -372,27 +379,18 @@ export default function CustomerDetailPage() {
               buttonText="Unlock"
               variant="secondary"
               icon={Unlock}
-              className="bg-green-500 hover:bg-green-600 text-white w-full"
-            />
-            <ActionButton
-              status="removed"
-              title="Confirm Customer Removal"
-              description="This will remove the customer and release the device from control. This cannot be undone."
-              buttonText="Remove"
-              variant="outline"
-              icon={Trash2}
-              className="w-full col-span-2 lg:col-span-1"
+              className="bg-green-600 hover:bg-green-700 text-white w-full h-12 text-base font-bold"
             />
             
             <AlertDialog>
               <AlertDialogTrigger asChild>
                 <Button 
                   variant="outline" 
-                  className="w-full" 
+                  className="w-full h-12 text-base font-bold border-primary text-primary hover:bg-primary/10" 
                   disabled={isSendingReminder}
                 >
                   {isSendingReminder ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <BellRing className="mr-2 h-4 w-4" />}
-                  Reminder
+                  Send Reminder
                 </Button>
               </AlertDialogTrigger>
               <AlertDialogContent>
@@ -411,9 +409,21 @@ export default function CustomerDetailPage() {
               </AlertDialogContent>
             </AlertDialog>
 
-            <Link href={`/customers/${id}/location`} passHref className="col-span-2 lg:col-span-1">
-              <Button variant="outline" className="w-full"><MapPin className="mr-2 h-4 w-4" />Track</Button>
+            <Link href={`/customers/${id}/location`} passHref className="w-full">
+              <Button variant="outline" className="w-full h-12 text-base font-bold border-blue-500 text-blue-500 hover:bg-blue-500/10">
+                <MapPin className="mr-2 h-4 w-4" />Track
+              </Button>
             </Link>
+
+            <ActionButton
+              status="removed"
+              title="Confirm Customer Removal"
+              description="This will remove the customer and release the device from control. This cannot be undone."
+              buttonText="Remove Device"
+              variant="outline"
+              icon={Trash2}
+              className="w-full h-12 text-base font-bold col-span-2 mt-2"
+            />
         </div>
       </div>
     </AppLayout>

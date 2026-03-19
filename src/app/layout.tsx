@@ -2,25 +2,13 @@ import type {Metadata} from 'next';
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster"
 import { Suspense } from 'react';
-import { Loader2 } from 'lucide-react';
 import { FirebaseErrorListener } from '@/components/firebase-error-listener';
+import GlobalLoading from './loading';
 
 export const metadata: Metadata = {
   title: 'Defence BD',
   description: 'Modern, responsive Retailer EMI Management mobile app',
 };
-
-function RootLoading() {
-  return (
-    <div className="flex h-screen w-full items-center justify-center bg-background p-4">
-      <div className="flex flex-col items-center gap-4">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        <p className="text-muted-foreground">Loading...</p>
-      </div>
-    </div>
-  );
-}
-
 
 export default function RootLayout({
   children,
@@ -36,7 +24,7 @@ export default function RootLayout({
       </head>
       <body className="font-body antialiased">
         <FirebaseErrorListener />
-        <Suspense fallback={<RootLoading />}>
+        <Suspense fallback={<GlobalLoading />}>
           {children}
         </Suspense>
         <Toaster />
