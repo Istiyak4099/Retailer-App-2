@@ -23,6 +23,7 @@ import {
   Loader2,
   CheckCircle2,
   AlertCircle,
+  UserMinus,
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
@@ -30,7 +31,7 @@ import { notFound, useParams, useRouter } from "next/navigation";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useEffect, useState } from "react";
 import { db } from "@/lib/firebase";
-import { collection, doc, getDoc, getDocs, query, updateDoc, where, addDoc, serverTimestamp } from "firebase/firestore";
+import { collection, doc, getDoc, getDocs, query, updateDoc, where, addDoc, serverTimestamp, deleteDoc } from "firebase/firestore";
 import { format } from 'date-fns';
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -69,6 +70,7 @@ export default function CustomerDetailPage() {
   const [loading, setLoading] = useState(true);
   const [isUpdating, setIsUpdating] = useState(false);
   const [isSendingReminder, setIsSendingReminder] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -163,6 +165,37 @@ export default function CustomerDetailPage() {
       })
       .finally(() => {
         setIsUpdating(false);
+      });
+  };
+
+  const handleDeleteCustomer = async () => {
+    if (!customer) return;
+    setIsDeleting(true);
+    
+    const customerDocRef = doc(db, "Customers", customer.id);
+
+    deleteDoc(customerDocRef)
+      .then(() => {
+        toast({
+          title: (
+            <div className="flex flex-col items-center gap-2">
+              <UserMinus className="h-10 w-10 text-red-500" />
+              <span>Profile Deleted</span>
+            </div>
+          ),
+          description: "Customer profile has been permanently removed.",
+        });
+        router.push('/customers');
+      })
+      .catch(async (serverError) => {
+        const permissionError = new FirestorePermissionError({
+          path: customerDocRef.path,
+          operation: 'delete',
+        } satisfies SecurityRuleContext);
+        errorEmitter.emit('permission-error', permissionError);
+      })
+      .finally(() => {
+        setIsDeleting(false);
       });
   };
 
@@ -424,6 +457,33 @@ export default function CustomerDetailPage() {
               icon={Trash2}
               className="w-full h-12 text-base font-bold col-span-2 mt-2"
             />
+
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button 
+                  variant="destructive" 
+                  className="w-full h-12 text-base font-bold col-span-2 mt-2 bg-red-800 hover:bg-red-900" 
+                  disabled={isDeleting}
+                >
+                  {isDeleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <UserMinus className="mr-2 h-4 w-4" />}
+                  Delete Customer Profile
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Permanently Delete Customer?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This action cannot be undone. This will permanently delete the customer profile from the database.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleDeleteCustomer} className="bg-destructive text-destructive-foreground">
+                    Delete Permanently
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
         </div>
       </div>
     </AppLayout>
