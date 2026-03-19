@@ -71,10 +71,7 @@ export default function NewCustomerPage() {
             form.setValue("android_id", decodedText);
             html5QrCode.stop().then(() => {
               setIsScanning(false);
-              toast({
-                title: "QR Code Scanned",
-                description: `Successfully captured Android ID: ${decodedText}`,
-              });
+              // QR Code Scan toast removed as requested
             });
           };
 
@@ -102,7 +99,7 @@ export default function NewCustomerPage() {
         html5QrCode.stop().catch(console.error);
       }
     };
-  }, [isScanning, form, toast]);
+  }, [isScanning, form]);
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     try {
@@ -110,7 +107,7 @@ export default function NewCustomerPage() {
         ...values,
         status: "pending",
       });
-      toast({ title: "Customer Added", description: "Step 1 completed successfully." });
+      // Customer Added toast removed as requested
       router.push(`/customers/${docRef.id}/emi/new`);
     } catch (error) {
       console.error("Error adding customer: ", error);

@@ -36,7 +36,6 @@ const mainNavItems = [
   { href: "/balance", icon: CreditCard, label: "Balance Keys" },
   { href: "/onboarding", icon: User, label: "User Profile" },
   { href: "/installation-video", icon: Youtube, label: "Installation Video" },
-  { href: "/running-qr-code", icon: Share2, label: "Running Phone QR Code" },
   { href: "/contact-support", icon: Headset, label: "Contact Support" },
 ];
 

@@ -97,10 +97,7 @@ export default function OnboardingPage() {
 
       await setDoc(doc(db, "Users", staticUserId), userPayload, { merge: true });
 
-      toast({
-        title: "Profile Created",
-        description: "Your information has been saved successfully.",
-      });
+      // Profile Created toast removed as requested
       
       const updatedUserData = await getDoc(doc(db, "Users", staticUserId));
       setUserData({ uid: staticUserId, ...(updatedUserData.data() as Omit<User, 'uid'>) });

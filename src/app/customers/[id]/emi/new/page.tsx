@@ -128,10 +128,7 @@ export default function NewEmiPage() {
         android_id: values.android_id
       });
 
-      toast({
-        title: "EMI Created Successfully",
-        description: "The new EMI plan has been saved.",
-      });
+      // EMI Created toast removed as requested
       router.push(`/customers/${id}`);
     } catch (error) {
         console.error("Error creating EMI:", error);
