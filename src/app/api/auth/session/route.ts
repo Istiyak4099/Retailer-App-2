@@ -1,28 +1,25 @@
 import { NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
 import { SessionData } from '@/lib/types';
 
 /**
  * API route to retrieve the current session data.
  * 
- * - Returns the session data if the cookie is present.
- * - Returns 401 Unauthorized if the cookie is missing.
+ * - UPDATED: Returns a mock session for testing when login is disabled.
  */
 
 export async function GET() {
   try {
-    const cookieStore = await cookies();
-    const sessionCookie = cookieStore.get('auth_session');
-
-    if (!sessionCookie) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
-
-    const sessionData: SessionData = JSON.parse(sessionCookie.value);
-    return NextResponse.json(sessionData, { status: 200 });
+    // Return a default mock session to bypass login requirement
+    const mockSession: SessionData = {
+      userId: 'default-user',
+      mobileNumber: '+8801700000000',
+      name: 'Test Retailer',
+      role: 'Retailer',
+      shopName: 'Demo Gadget Shop',
+      dealerCode: 'D-101',
+    };
+    
+    return NextResponse.json(mockSession, { status: 200 });
   } catch (error) {
     console.error('Session retrieval error:', error);
     return NextResponse.json(
