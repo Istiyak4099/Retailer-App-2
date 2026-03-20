@@ -15,7 +15,7 @@ export default function InstallPage() {
           <CardHeader>
             <CardTitle>Test DPC Setup</CardTitle>
             <CardDescription>
-              Scan to provision the device as a managed profile for testing.
+              Scan to provision the device.
             </CardDescription>
           </CardHeader>
           <CardContent className="flex flex-col items-center justify-center gap-4">
@@ -30,7 +30,7 @@ export default function InstallPage() {
               />
             </div>
             <p className="text-xs text-muted-foreground">
-              Required for enterprise-level device management testing.
+              Required for enterprise-level device management.
             </p>
           </CardContent>
         </Card>
@@ -40,7 +40,7 @@ export default function InstallPage() {
           <CardHeader>
             <CardTitle>Lock Module APK</CardTitle>
             <CardDescription>
-              Scan to download and install the primary lock management application.
+              Scan to download and install the primary device control application.
             </CardDescription>
           </CardHeader>
           <CardContent className="flex flex-col items-center justify-center gap-4">
