@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useForm } from "react-hook-form";
@@ -19,7 +18,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { useToast } from "@/hooks/use-toast";
 import { db } from "@/lib/firebase";
 import { doc, getDoc, setDoc } from "firebase/firestore";
-import { Building, Loader2, Mail, MapPin, Phone, User as UserIcon } from "lucide-react";
+import { Building, Loader2, Mail, MapPin, Phone, User as UserIcon, CreditCard } from "lucide-react";
 import { useEffect, useState } from "react";
 import { User } from "@/lib/types";
 import { Separator } from "@/components/ui/separator";
@@ -34,7 +33,7 @@ const formSchema = z.object({
 
 type FormData = z.infer<typeof formSchema>;
 
-const InfoRow = ({ icon: Icon, label, value }: { icon: React.ElementType, label: string, value: string | undefined | null }) => (
+const InfoRow = ({ icon: Icon, label, value }: { icon: React.ElementType, label: string, value: string | number | undefined | null }) => (
     <div className="flex items-start py-3">
         <Icon className="h-5 w-5 text-primary mr-4 mt-1" />
         <div>
@@ -44,7 +43,6 @@ const InfoRow = ({ icon: Icon, label, value }: { icon: React.ElementType, label:
     </div>
 );
 
-// Using a static ID since authentication is disabled
 const staticUserId = "default-user";
 
 export default function OnboardingPage() {
@@ -92,12 +90,11 @@ export default function OnboardingPage() {
     try {
       const userPayload = {
         ...values,
-        email_address: "testuser@example.com", // Using a dummy email
+        email_address: "testuser@example.com",
+        code_balance: isNewUser ? 10 : userData?.code_balance || 0, // Initialize with 10 codes for new users
       };
 
       await setDoc(doc(db, "Users", staticUserId), userPayload, { merge: true });
-
-      // Profile Created toast removed as requested
       
       const updatedUserData = await getDoc(doc(db, "Users", staticUserId));
       setUserData({ uid: staticUserId, ...(updatedUserData.data() as Omit<User, 'uid'>) });
@@ -247,16 +244,7 @@ export default function OnboardingPage() {
                 <Separator />
                 <InfoRow icon={MapPin} label="Address" value={userData?.shop_address} />
                 <Separator />
-                <div className="flex items-start py-3">
-                    <UserIcon className="h-5 w-5 text-primary mr-4 mt-1" />
-                    <div>
-                        <p className="text-muted-foreground text-sm">Dealer Code</p>
-                        <div className="font-semibold bg-primary/10 text-primary p-2 rounded-lg inline-flex items-center gap-2 mt-1">
-                            <Building className="h-4 w-4" />
-                            <span>{userData?.uid}</span>
-                        </div>
-                    </div>
-                </div>
+                <InfoRow icon={CreditCard} label="Code Balance" value={userData?.code_balance} />
             </CardContent>
         </Card>
       </div>

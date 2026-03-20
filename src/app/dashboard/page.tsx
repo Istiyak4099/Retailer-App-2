@@ -24,7 +24,7 @@ import Link from 'next/link';
 import { cn } from "@/lib/utils";
 import { useEffect, useState, useCallback } from "react";
 import { db } from "@/lib/firebase";
-import { collection, query, where, getDocs, Timestamp, onSnapshot } from "firebase/firestore";
+import { collection, query, where, getDocs, Timestamp, onSnapshot, doc } from "firebase/firestore";
 import { SessionData } from "@/lib/types";
 import { useRouter } from "next/navigation";
 
@@ -61,7 +61,7 @@ export default function DashboardPage() {
   const [stats, setStats] = useState({
     today: 0,
     active: 0,
-    balance: 5, // Mock initial balance
+    balance: 10,
     pending: 0,
     locked: 0,
     unlocked: 0,
@@ -97,10 +97,10 @@ export default function DashboardPage() {
     if (!session) return;
     
     setLoading(true);
-    // Real-time listener for better sync and stat numbers
+
     const q = query(collection(db, 'Customers'));
     
-    const unsubscribe = onSnapshot(q, (snapshot) => {
+    const unsubscribeCustomers = onSnapshot(q, (snapshot) => {
       let active = 0, pending = 0, locked = 0, unlocked = 0, removed = 0, total = 0;
       
       snapshot.forEach((doc) => {
@@ -115,7 +115,6 @@ export default function DashboardPage() {
         }
       });
 
-      // Fetch today's activations separately for precise counting
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       const tomorrow = new Date(today);
@@ -146,7 +145,16 @@ export default function DashboardPage() {
       setLoading(false);
     });
 
-    return () => unsubscribe();
+    const unsubscribeUser = onSnapshot(doc(db, "Users", "default-user"), (docSnap) => {
+        if (docSnap.exists()) {
+            setStats(prev => ({ ...prev, balance: docSnap.data().code_balance || 0 }));
+        }
+    });
+
+    return () => {
+        unsubscribeCustomers();
+        unsubscribeUser();
+    };
   }, [session]);
 
   if (sessionLoading || !session) {

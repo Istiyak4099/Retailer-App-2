@@ -1,10 +1,19 @@
 import { redirect } from 'next/navigation';
+import { cookies } from 'next/headers';
 
 /**
- * Root page redirect gate - UPDATED FOR TESTING BYPASS.
+ * Root page redirect gate.
  * 
- * - Directly redirects to /dashboard to bypass login during testing.
+ * - Redirects to /dashboard if a session exists.
+ * - Redirects to /login otherwise.
  */
 export default async function HomePage() {
-  redirect('/dashboard');
+  const cookieStore = await cookies();
+  const session = cookieStore.get('auth_session');
+
+  if (session) {
+    redirect('/dashboard');
+  } else {
+    redirect('/login');
+  }
 }

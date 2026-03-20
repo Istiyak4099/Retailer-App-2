@@ -5,7 +5,8 @@ import { SessionData } from '@/lib/types';
 /**
  * API route to retrieve the current session data.
  * 
- * - UPDATED FOR TESTING: Returns a mock session if the auth cookie is missing.
+ * - Returns the session data if the cookie is present.
+ * - Returns 401 Unauthorized if the cookie is missing.
  */
 
 export async function GET() {
@@ -14,16 +15,10 @@ export async function GET() {
     const sessionCookie = cookieStore.get('auth_session');
 
     if (!sessionCookie) {
-      // Return a mock session for testing purposes
-      const mockSession: SessionData = {
-        userId: 'default-user',
-        mobileNumber: '+8801700000000',
-        name: 'Test Dealer',
-        role: 'Retailer',
-        shopName: 'Test Gadget Store',
-        dealerCode: 'TEST001',
-      };
-      return NextResponse.json(mockSession, { status: 200 });
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
     }
 
     const sessionData: SessionData = JSON.parse(sessionCookie.value);

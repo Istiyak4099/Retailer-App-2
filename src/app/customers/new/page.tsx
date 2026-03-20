@@ -18,10 +18,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useRouter } from "next/navigation";
-import { ArrowRight, Loader2, QrCode, X } from "lucide-react";
-import { db } from "@/lib/firebase";
-import { addDoc, collection } from "firebase/firestore";
-import { useToast } from "@/hooks/use-toast";
+import { ArrowRight, QrCode, X } from "lucide-react";
 import { useState, useEffect } from "react";
 import { Html5Qrcode } from "html5-qrcode";
 import {
@@ -35,16 +32,15 @@ import {
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 const formSchema = z.object({
-  full_name: z.string().optional(),
-  mobile_number: z.string().optional(),
+  full_name: z.string().min(2, "Full name is required"),
+  mobile_number: z.string().min(10, "Valid mobile number is required"),
   email_address: z.string().email("Invalid email address").optional().or(z.literal('')),
-  android_id: z.string().optional(),
-  address: z.string().optional(),
+  android_id: z.string().min(1, "Android ID is required"),
+  address: z.string().min(5, "Address is required"),
 });
 
 export default function NewCustomerPage() {
   const router = useRouter();
-  const { toast } = useToast();
   const [isScanning, setIsScanning] = useState(false);
   const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
 
@@ -71,7 +67,6 @@ export default function NewCustomerPage() {
             form.setValue("android_id", decodedText);
             html5QrCode.stop().then(() => {
               setIsScanning(false);
-              // QR Code Scan toast removed as requested
             });
           };
 
@@ -102,17 +97,13 @@ export default function NewCustomerPage() {
   }, [isScanning, form]);
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
-    try {
-      const docRef = await addDoc(collection(db, "Customers"), {
-        ...values,
-        status: "pending",
-      });
-      // Customer Added toast removed as requested
-      router.push(`/customers/${docRef.id}/emi/new`);
-    } catch (error) {
-      console.error("Error adding customer: ", error);
-      toast({ variant: "destructive", title: "Error", description: "Failed to add customer. Please try again." });
-    }
+    // We don't create the doc here anymore. 
+    // We pass data to the next step via query parameters.
+    const searchParams = new URLSearchParams();
+    Object.entries(values).forEach(([key, value]) => {
+      if (value) searchParams.set(key, value);
+    });
+    router.push(`/customers/new/emi?${searchParams.toString()}`);
   }
 
   return (
@@ -209,8 +200,7 @@ export default function NewCustomerPage() {
                 )}
               />
               <div className="flex justify-end">
-                 <Button type="submit" disabled={form.formState.isSubmitting}>
-                  {form.formState.isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                 <Button type="submit">
                   Next: EMI Details <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
               </div>
