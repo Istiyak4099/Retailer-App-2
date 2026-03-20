@@ -24,6 +24,8 @@ import { User } from "@/lib/types";
 import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
+const TEST_UID = "test-retailer-123";
+
 const formSchema = z.object({
   shop_owner_name: z.string().min(2, "Owner name is required"),
   mobile_number: z.string().regex(/^\d{11}$/, "Invalid 11-digit mobile number"),
@@ -43,11 +45,9 @@ const InfoRow = ({ icon: Icon, label, value }: { icon: React.ElementType, label:
     </div>
 );
 
-const staticUserId = "default-user";
-
 export default function OnboardingPage() {
   const { toast } = useToast();
-  const [userData, setUserData] = useState<User | null>(null);
+  const [userData, setUserData] = useState<any>(null);
   const [isNewUser, setIsNewUser] = useState(false);
   const [loading, setLoading] = useState(true);
 
@@ -64,12 +64,17 @@ export default function OnboardingPage() {
   useEffect(() => {
     const fetchUserData = async () => {
       setLoading(true);
-      const userDocRef = doc(db, "Users", staticUserId);
+      const userDocRef = doc(db, "Retailers", TEST_UID);
       const userDoc = await getDoc(userDocRef);
       if (userDoc.exists()) {
-        const fetchedData = userDoc.data() as Omit<User, 'uid'>;
-        setUserData({ ...fetchedData, uid: staticUserId });
-        form.reset(fetchedData);
+        const fetchedData = userDoc.data();
+        setUserData(fetchedData);
+        form.reset({
+          shop_owner_name: fetchedData.shop_owner_name || "",
+          mobile_number: fetchedData.mobile_number || "",
+          shop_name: fetchedData.shop_name || "",
+          shop_address: fetchedData.shop_address || "",
+        });
         setIsNewUser(false);
       } else {
          form.reset({
@@ -91,13 +96,13 @@ export default function OnboardingPage() {
       const userPayload = {
         ...values,
         email_address: "testuser@example.com",
-        code_balance: isNewUser ? 10 : userData?.code_balance || 0, // Initialize with 10 codes for new users
+        key_balance: isNewUser ? 10 : userData?.key_balance || 0,
       };
 
-      await setDoc(doc(db, "Users", staticUserId), userPayload, { merge: true });
+      await setDoc(doc(db, "Retailers", TEST_UID), userPayload, { merge: true });
       
-      const updatedUserData = await getDoc(doc(db, "Users", staticUserId));
-      setUserData({ uid: staticUserId, ...(updatedUserData.data() as Omit<User, 'uid'>) });
+      const updatedUserData = await getDoc(doc(db, "Retailers", TEST_UID));
+      setUserData(updatedUserData.data());
       setIsNewUser(false);
 
     } catch (error) {
@@ -244,7 +249,7 @@ export default function OnboardingPage() {
                 <Separator />
                 <InfoRow icon={MapPin} label="Address" value={userData?.shop_address} />
                 <Separator />
-                <InfoRow icon={CreditCard} label="Code Balance" value={userData?.code_balance} />
+                <InfoRow icon={CreditCard} label="Code Balance" value={userData?.key_balance} />
             </CardContent>
         </Card>
       </div>

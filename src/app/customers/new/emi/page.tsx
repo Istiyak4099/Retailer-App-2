@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useForm } from "react-hook-form";
@@ -35,6 +34,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+
+const TEST_UID = "test-retailer-123";
 
 const fileSchema = z.any();
 
@@ -84,10 +85,10 @@ function NewEmiPageContent() {
   };
 
   const checkBalance = async () => {
-    const userDocRef = doc(db, "Users", "default-user");
+    const userDocRef = doc(db, "Retailers", TEST_UID);
     const userDoc = await getDoc(userDocRef);
     if (!userDoc.exists()) return 0;
-    return userDoc.data().code_balance || 0;
+    return userDoc.data().key_balance || 0;
   };
 
   async function handleFinalSubmit() {
@@ -131,6 +132,7 @@ function NewEmiPageContent() {
         android_id: searchParams.get('android_id'),
         address: searchParams.get('address'),
         status: "active" as const,
+        uid: TEST_UID,
       };
 
       const customerRef = await addDoc(collection(db, "Customers"), customerData);
@@ -153,8 +155,8 @@ function NewEmiPageContent() {
       });
       
       // 5. Deduct Balance
-      await updateDoc(doc(db, "Users", "default-user"), {
-        code_balance: increment(-1)
+      await updateDoc(doc(db, "Retailers", TEST_UID), {
+        key_balance: increment(-1)
       });
 
       router.push(`/customers/${customerRef.id}`);

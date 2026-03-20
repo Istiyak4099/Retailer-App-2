@@ -10,8 +10,9 @@ import { SessionData } from '@/lib/types';
 export async function GET() {
   try {
     // Return a default mock session to bypass login requirement
+    // Using a consistent test UID for Retailers collection mapping
     const mockSession: SessionData = {
-      userId: 'default-user',
+      userId: 'test-retailer-123',
       mobileNumber: '+8801700000000',
       name: 'Test Retailer',
       role: 'Retailer',

@@ -7,7 +7,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { useToast } from "@/hooks/use-toast";
 import { QrCode, PlusCircle, CreditCard, Loader2, CheckCircle2 } from "lucide-react";
 import { db } from "@/lib/firebase";
-import { doc, onSnapshot, updateDoc, increment } from "firebase/firestore";
+import { doc, onSnapshot, updateDoc, increment, setDoc, getDoc } from "firebase/firestore";
+
+const TEST_UID = "test-retailer-123";
 
 export default function CodeBalancePage() {
   const [balance, setBalance] = useState<number | null>(null);
@@ -15,11 +17,15 @@ export default function CodeBalancePage() {
   const { toast } = useToast();
 
   useEffect(() => {
-    const unsubscribe = onSnapshot(doc(db, "Users", "default-user"), (doc) => {
-      if (doc.exists()) {
-        setBalance(doc.data().code_balance || 0);
+    const docRef = doc(db, "Retailers", TEST_UID);
+    
+    const unsubscribe = onSnapshot(docRef, (docSnap) => {
+      if (docSnap.exists()) {
+        setBalance(docSnap.data().key_balance || 0);
       } else {
+        // Initialize if doesn't exist for testing
         setBalance(0);
+        setDoc(docRef, { key_balance: 0 }, { merge: true });
       }
       setLoading(false);
     });
@@ -27,12 +33,13 @@ export default function CodeBalancePage() {
   }, []);
 
   const handleScan = () => {
-    // Silent for scanner as per previous request
+    // Silent for scanner
   };
 
   const handleAddBalance = async () => {
-      await updateDoc(doc(db, "Users", "default-user"), {
-          code_balance: increment(10)
+      const docRef = doc(db, "Retailers", TEST_UID);
+      await updateDoc(docRef, {
+          key_balance: increment(10)
       });
       toast({
           title: (

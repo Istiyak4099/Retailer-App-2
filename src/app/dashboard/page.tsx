@@ -28,6 +28,8 @@ import { collection, query, where, getDocs, Timestamp, onSnapshot, doc } from "f
 import { SessionData } from "@/lib/types";
 import { useRouter } from "next/navigation";
 
+const TEST_UID = "test-retailer-123";
+
 const StatCard = ({ icon: Icon, title, value, iconColor, href, loading }: { icon: React.ElementType, title: string, value: string | number, iconColor?: string, href: string, loading?: boolean }) => (
     <Link href={href} passHref className="h-full">
       <Card className="text-center shadow-md h-full hover:bg-muted/50 transition-colors border-primary/10">
@@ -61,7 +63,7 @@ export default function DashboardPage() {
   const [stats, setStats] = useState({
     today: 0,
     active: 0,
-    balance: 10,
+    balance: 0,
     pending: 0,
     locked: 0,
     unlocked: 0,
@@ -145,9 +147,9 @@ export default function DashboardPage() {
       setLoading(false);
     });
 
-    const unsubscribeUser = onSnapshot(doc(db, "Users", "default-user"), (docSnap) => {
+    const unsubscribeUser = onSnapshot(doc(db, "Retailers", TEST_UID), (docSnap) => {
         if (docSnap.exists()) {
-            setStats(prev => ({ ...prev, balance: docSnap.data().code_balance || 0 }));
+            setStats(prev => ({ ...prev, balance: docSnap.data().key_balance || 0 }));
         }
     });
 
