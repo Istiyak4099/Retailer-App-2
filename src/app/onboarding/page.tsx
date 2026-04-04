@@ -95,9 +95,7 @@ export default function OnboardingPage() {
         description: "Your information has been updated successfully.",
       });
 
-      if (onboardingStatus === 'pending') {
-        router.push('/dashboard');
-      }
+      // Redirection is now handled by the useAuth hook based on the updated state.
 
     } catch (error) {
       console.error("Error saving profile: ", error);
@@ -214,7 +212,7 @@ export default function OnboardingPage() {
             </CardTitle>
             <CardDescription>
                 This information is required for your retailer account.
-                / <span dir="rtl">هذه المعلومات مطلوبة لحساب التاجر الخاص بك.</span>
+                / <span dir="rtl">هذه المعلومات المطلوبة لحساب التاجر الخاص بك.</span>
             </CardDescription>
             </CardHeader>
             <CardContent>

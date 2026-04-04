@@ -15,7 +15,7 @@ import {
   User as FirebaseUser,
 } from "firebase/auth";
 import { auth, db } from "@/lib/firebase";
-import { doc, getDoc, setDoc } from "firebase/firestore";
+import { doc, onSnapshot } from "firebase/firestore";
 import { useRouter, usePathname } from "next/navigation";
 import GlobalLoading from "@/app/loading";
 import { ComplianceModal } from "@/components/auth/compliance-modal";
@@ -50,42 +50,58 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const { toast } = useToast();
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+    let unsubscribeFirestore: (() => void) | null = null;
+
+    const unsubscribeAuth = onAuthStateChanged(auth, (firebaseUser) => {
+      if (unsubscribeFirestore) {
+        unsubscribeFirestore();
+      }
+
       if (firebaseUser) {
         setUser(firebaseUser);
-        try {
-          const userDocRef = doc(db, "Retailers", firebaseUser.uid);
-          const userDoc = await getDoc(userDocRef);
-          if (userDoc.exists()) {
-            const data = userDoc.data();
-            if (data.is_riba_free_compliant) {
-              setComplianceStatus("compliant");
-              if (data.isOnboarded) {
-                setOnboardingStatus("completed");
+        const userDocRef = doc(db, "Retailers", firebaseUser.uid);
+
+        unsubscribeFirestore = onSnapshot(userDocRef, 
+          (docSnap) => {
+            if (docSnap.exists()) {
+              const data = docSnap.data();
+              if (data.is_riba_free_compliant) {
+                setComplianceStatus("compliant");
+                if (data.isOnboarded) {
+                  setOnboardingStatus("completed");
+                } else {
+                  setOnboardingStatus("pending");
+                }
               } else {
-                setOnboardingStatus("pending");
+                setComplianceStatus("pending");
               }
             } else {
               setComplianceStatus("pending");
+              setOnboardingStatus("pending");
             }
-          } else {
-             setComplianceStatus("pending");
-             setOnboardingStatus("pending");
+            setLoading(false);
+          },
+          (error) => {
+            console.error("Error with Firestore snapshot listener:", error);
+            setComplianceStatus("pending");
+            setOnboardingStatus("pending");
+            setLoading(false);
           }
-        } catch (error) {
-          console.error("Error checking user status:", error);
-          setComplianceStatus("pending");
-          setOnboardingStatus("pending");
-        }
+        );
       } else {
         setUser(null);
         setComplianceStatus("unauthenticated");
-        setOnboardingStatus("pending");
+        setOnboardingStatus("loading");
+        setLoading(false);
       }
-      setLoading(false);
     });
 
-    return () => unsubscribe();
+    return () => {
+        unsubscribeAuth();
+        if (unsubscribeFirestore) {
+            unsubscribeFirestore();
+        }
+    };
   }, []);
 
   useEffect(() => {
@@ -93,14 +109,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const isOnboardingRoute = pathname === "/onboarding";
     const isRootRoute = pathname === "/";
 
-    if (loading) return;
+    if (loading || onboardingStatus === 'loading') return;
 
     if (complianceStatus === "unauthenticated" && !isAuthRoute) {
       router.push("/login");
     } else if (complianceStatus === "compliant") {
        if (onboardingStatus === 'pending' && !isOnboardingRoute) {
          router.push('/onboarding');
-       } else if (onboardingStatus === 'completed' && (isAuthRoute || isRootRoute)) {
+       } else if (onboardingStatus === 'completed' && (isAuthRoute || isRootRoute || isOnboardingRoute)) {
          router.push('/dashboard');
        }
     }
@@ -135,10 +151,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setActionLoading(true);
     try {
       const userDocRef = doc(db, "Retailers", user.uid);
-      await setDoc(userDocRef, { is_riba_free_compliant: true, uid: user.uid }, { merge: true });
-      setComplianceStatus("compliant");
-      setOnboardingStatus("pending");
-      router.push('/onboarding');
+      // setDoc is imported from "firebase/firestore"
+      await (await import("firebase/firestore")).setDoc(userDocRef, { is_riba_free_compliant: true, uid: user.uid }, { merge: true });
+      // State will be updated by the onSnapshot listener.
     } catch (error) {
       console.error("Error saving compliance status:", error);
     } finally {
@@ -166,7 +181,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const value = { user, loading, complianceStatus, onboardingStatus, signInWithGoogle, logout, handleComplianceConfirm, handleComplianceDeny };
   
-  if (loading) {
+  if (loading || (user && (complianceStatus === 'loading' || onboardingStatus === 'loading'))) {
     return <GlobalLoading />;
   }
 
@@ -178,16 +193,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     );
   }
 
-  // Let the redirection useEffect handle routing
-  if (
-    (complianceStatus === 'compliant' && onboardingStatus === 'pending' && pathname === '/onboarding') ||
-    (complianceStatus === 'compliant' && onboardingStatus === 'completed') ||
-    pathname === '/login'
-  ) {
-    return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
-  }
-
-  return <GlobalLoading />;
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth() {
