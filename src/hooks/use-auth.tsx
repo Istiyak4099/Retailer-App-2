@@ -74,12 +74,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const isAuthRoute = pathname === "/login";
+    const isRootRoute = pathname === "/";
 
     if (loading) return;
 
     if (complianceStatus === "unauthenticated" && !isAuthRoute) {
       router.push("/login");
-    } else if (complianceStatus === "compliant" && isAuthRoute) {
+    } else if (complianceStatus === "compliant" && (isAuthRoute || isRootRoute)) {
       router.push("/dashboard");
     }
     // If 'pending', we render the modal, so no redirect is needed.
