@@ -1,35 +1,28 @@
-
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    // TEMPORARY: Allow all access for testing bypass mode.
-    // In production, these should be restricted to authenticated users.
     
-    match /Users/{userId} {
-      allow read, write: if true;
-    }
-
-    match /Retailers/{retailerId} {
-      allow read, write: if true;
+    match /Retailers/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
     }
 
     match /Customers/{customerId} {
-      allow read, write: if true;
+      allow create: if request.auth != null && request.resource.data.uid == request.auth.uid;
+      allow read, update, delete: if request.auth != null && resource.data.uid == request.auth.uid;
     }
 
     match /EmiDetails/{emiId} {
-      allow read, write: if true;
+      // Reads are allowed for any authenticated user because client-side queries are already filtered.
+      // Securing list queries on this collection would require data model changes.
+      allow read: if request.auth != null;
+      // Creates are only allowed if the associated customer belongs to the retailer.
+      allow create: if request.auth != null && get(/databases/$(database)/documents/Customers/$(request.resource.data.customerId)).data.uid == request.auth.uid;
     }
 
     match /Notifications/{notificationId} {
-      allow read, write: if true;
-    }
-    
-    // Additional rule for Dealers used in session lookup
-    match /Dealers/{dealerId} {
-      allow read: if true;
-      allow write: if request.auth != null; 
+      allow create: if request.auth != null && request.resource.data.retailerId == request.auth.uid;
+      allow read: if request.auth != null && resource.data.retailerId == request.auth.uid;
     }
   }
 }
