@@ -2,7 +2,7 @@
   "indexes": [
     {
       "collectionGroup": "EmiDetails",
-      "queryScope": "COLLECTION",
+      "queryScope": "COLLECTION_GROUP",
       "fields": [
         {
           "fieldPath": "customerId",
