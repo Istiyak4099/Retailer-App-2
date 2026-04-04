@@ -20,26 +20,29 @@ export function ComplianceModal({ loading }: { loading: boolean }) {
     return (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-background/80 backdrop-blur-sm">
             <AlertDialog open={true}>
-                <AlertDialogContent className="max-w-lg text-center">
+                <AlertDialogContent className="max-w-lg">
                     <AlertDialogHeader>
-                    <AlertDialogTitle className="text-xl md:text-2xl">
-                        Riba-Free Compliance
-                        <span dir="rtl" className="mt-1 block">الالتزام بالمعاملات الخالية من الربا</span>
-                    </AlertDialogTitle>
-                    <div className="text-base py-4 text-muted-foreground">
-                        <p>This platform is exclusively optimized for retailers operating on a strict zero-interest (Riba-free) EMI model.</p>
-                        <p dir="rtl" className="mt-2">
+                        <AlertDialogTitle className="text-center text-xl md:text-2xl">
+                            Riba-Free Compliance
+                            <span dir="rtl" className="block mt-1">الالتزام بالمعاملات الخالية من الربا</span>
+                        </AlertDialogTitle>
+                    </AlertDialogHeader>
+                    
+                    <div className="py-4 space-y-4 text-muted-foreground">
+                        <p className="text-center">This platform is exclusively optimized for retailers operating on a strict zero-interest (Riba-free) EMI model.</p>
+                        <p dir="rtl" className="text-center">
                         هذه المنصة مخصصة حصرياً للتجار الذين يعملون بنظام الأقساط الشهرية بدون فوائد (خالٍ من الربا) فقط.
                         </p>
                     </div>
-                     <div className="text-base font-semibold text-foreground pt-2">
-                         <p>Do you confirm that your shop follows a 100% Riba-free policy?</p>
-                         <p dir="rtl" className="mt-2">
-                         هل تؤكد أن متجرك يتبع سياسة خالية من الربا بنسبة 100٪؟
+
+                    <div className="pt-2 font-semibold text-foreground space-y-2">
+                        <p className="text-center">Do you confirm that your shop follows a 100% Riba-free policy?</p>
+                        <p dir="rtl" className="text-center">
+                        هل تؤكد أن متجرك يتبع سياسة خالية من الربا بنسبة 100٪؟
                         </p>
                     </div>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter className="flex-col sm:flex-row gap-2 mt-4">
+                    
+                    <AlertDialogFooter className="flex-col sm:flex-row gap-2 mt-6">
                         <Button
                             variant="outline"
                             onClick={handleComplianceDeny}
