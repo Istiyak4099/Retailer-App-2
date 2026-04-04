@@ -22,12 +22,14 @@ import { ComplianceModal } from "@/components/auth/compliance-modal";
 import { useToast } from "./use-toast";
 import { Button } from "@/components/ui/button";
 
-type ComplianceStatus = "loading" | "compliant" | "pending" | "unauthenticated";
+type AuthStatus = "loading" | "compliant" | "pending" | "unauthenticated";
+type OnboardingStatus = "loading" | "pending" | "completed";
 
 interface AuthContextType {
   user: FirebaseUser | null;
   loading: boolean;
-  complianceStatus: ComplianceStatus;
+  complianceStatus: AuthStatus;
+  onboardingStatus: OnboardingStatus;
   signInWithGoogle: () => Promise<void>;
   logout: () => Promise<void>;
   handleComplianceConfirm: () => Promise<void>;
@@ -39,7 +41,8 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<FirebaseUser | null>(null);
   const [loading, setLoading] = useState(true);
-  const [complianceStatus, setComplianceStatus] = useState<ComplianceStatus>("loading");
+  const [complianceStatus, setComplianceStatus] = useState<AuthStatus>("loading");
+  const [onboardingStatus, setOnboardingStatus] = useState<OnboardingStatus>("loading");
   const [actionLoading, setActionLoading] = useState(false);
 
   const router = useRouter();
@@ -53,18 +56,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         try {
           const userDocRef = doc(db, "Retailers", firebaseUser.uid);
           const userDoc = await getDoc(userDocRef);
-          if (userDoc.exists() && userDoc.data().is_riba_free_compliant) {
-            setComplianceStatus("compliant");
+          if (userDoc.exists()) {
+            const data = userDoc.data();
+            if (data.is_riba_free_compliant) {
+              setComplianceStatus("compliant");
+              if (data.isOnboarded) {
+                setOnboardingStatus("completed");
+              } else {
+                setOnboardingStatus("pending");
+              }
+            } else {
+              setComplianceStatus("pending");
+            }
           } else {
-            setComplianceStatus("pending");
+             setComplianceStatus("pending");
+             setOnboardingStatus("pending");
           }
         } catch (error) {
-          console.error("Error checking compliance status:", error);
+          console.error("Error checking user status:", error);
           setComplianceStatus("pending");
+          setOnboardingStatus("pending");
         }
       } else {
         setUser(null);
         setComplianceStatus("unauthenticated");
+        setOnboardingStatus("pending");
       }
       setLoading(false);
     });
@@ -74,17 +90,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const isAuthRoute = pathname === "/login";
+    const isOnboardingRoute = pathname === "/onboarding";
     const isRootRoute = pathname === "/";
 
     if (loading) return;
 
     if (complianceStatus === "unauthenticated" && !isAuthRoute) {
       router.push("/login");
-    } else if (complianceStatus === "compliant" && (isAuthRoute || isRootRoute)) {
-      router.push("/dashboard");
+    } else if (complianceStatus === "compliant") {
+       if (onboardingStatus === 'pending' && !isOnboardingRoute) {
+         router.push('/onboarding');
+       } else if (onboardingStatus === 'completed' && (isAuthRoute || isRootRoute)) {
+         router.push('/dashboard');
+       }
     }
-    // If 'pending', we render the modal, so no redirect is needed.
-  }, [complianceStatus, loading, pathname, router]);
+  }, [complianceStatus, onboardingStatus, loading, pathname, router]);
 
   const signInWithGoogle = async () => {
     const provider = new GoogleAuthProvider();
@@ -117,6 +137,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const userDocRef = doc(db, "Retailers", user.uid);
       await setDoc(userDocRef, { is_riba_free_compliant: true, uid: user.uid }, { merge: true });
       setComplianceStatus("compliant");
+      setOnboardingStatus("pending");
       router.push('/onboarding');
     } catch (error) {
       console.error("Error saving compliance status:", error);
@@ -143,14 +164,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
   };
 
-  const value = { user, loading, complianceStatus, signInWithGoogle, logout, handleComplianceConfirm, handleComplianceDeny };
+  const value = { user, loading, complianceStatus, onboardingStatus, signInWithGoogle, logout, handleComplianceConfirm, handleComplianceDeny };
   
-  // Render loading spinner for initial auth check
   if (loading) {
     return <GlobalLoading />;
   }
 
-  // If user is logged in but compliance is pending, show the modal overlay
   if (complianceStatus === "pending") {
     return (
        <AuthContext.Provider value={value}>
@@ -159,12 +178,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     );
   }
 
-  // If compliant, or on the login page, render children
-  if (complianceStatus === "compliant" || pathname === '/login') {
+  // Let the redirection useEffect handle routing
+  if (
+    (complianceStatus === 'compliant' && onboardingStatus === 'pending' && pathname === '/onboarding') ||
+    (complianceStatus === 'compliant' && onboardingStatus === 'completed') ||
+    pathname === '/login'
+  ) {
     return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
   }
 
-  // Fallback for unauthenticated users not on login page
   return <GlobalLoading />;
 }
 

@@ -18,9 +18,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { useToast } from "@/hooks/use-toast";
 import { db } from "@/lib/firebase";
 import { doc, getDoc, setDoc } from "firebase/firestore";
-import { Building, Loader2, Mail, MapPin, Phone, User as UserIcon } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
+import GlobalLoading from "../loading";
+import { useRouter } from "next/navigation";
 
 const formSchema = z.object({
   shop_owner_name: z.string().min(2, "Owner name is required"),
@@ -31,11 +33,11 @@ const formSchema = z.object({
 
 type FormData = z.infer<typeof formSchema>;
 
-
 export default function OnboardingPage() {
   const { toast } = useToast();
-  const { user, loading: authLoading } = useAuth();
+  const { user, onboardingStatus, loading: authLoading } = useAuth();
   const [formLoading, setFormLoading] = useState(true);
+  const router = useRouter();
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -81,8 +83,9 @@ export default function OnboardingPage() {
       const userPayload = {
         ...values,
         uid: user.uid,
-        email_address: user.email, // Ensure email from auth is source of truth
-        is_riba_free_compliant: true, // Re-affirm compliance
+        email_address: user.email,
+        is_riba_free_compliant: true,
+        isOnboarded: true,
       };
 
       await setDoc(doc(db, "Retailers", user.uid), userPayload, { merge: true });
@@ -91,6 +94,10 @@ export default function OnboardingPage() {
         title: "Profile Saved / تم حفظ الملف الشخصي",
         description: "Your information has been updated successfully.",
       });
+
+      if (onboardingStatus === 'pending') {
+        router.push('/dashboard');
+      }
 
     } catch (error) {
       console.error("Error saving profile: ", error);
@@ -102,100 +109,118 @@ export default function OnboardingPage() {
     }
   }
   
-  if (authLoading || formLoading) {
-    return (
-      <AppLayout title="Loading Profile...">
-        <div className="flex justify-center items-center h-64">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+  if (authLoading || formLoading || onboardingStatus === 'loading') {
+    return <GlobalLoading />
+  }
+
+  const FormContent = (
+     <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+        <FormField
+            control={form.control}
+            name="shop_owner_name"
+            render={({ field }) => (
+                <FormItem>
+                <FormLabel>Shop Owner Name / <span dir="rtl">اسم صاحب المحل</span></FormLabel>
+                <FormControl>
+                    <Input placeholder="e.g. John Doe" {...field} />
+                </FormControl>
+                <FormMessage />
+                </FormItem>
+            )}
+        />
+        <FormField
+            control={form.control}
+            name="shop_name"
+            render={({ field }) => (
+            <FormItem>
+                <FormLabel>Shop Name / <span dir="rtl">اسم المحل</span></FormLabel>
+                <FormControl>
+                <Input placeholder="e.g. The Gadget Store" {...field} />
+                </FormControl>
+                <FormMessage />
+            </FormItem>
+            )}
+        />
+        <FormField
+            control={form.control}
+            name="shop_address"
+            render={({ field }) => (
+            <FormItem>
+                <FormLabel>Shop Address / <span dir="rtl">عنوان المحل</span></FormLabel>
+                <FormControl>
+                <Input placeholder="Full shop address" {...field} />
+                </FormControl>
+                <FormMessage />
+            </FormItem>
+            )}
+        />
+        <FormField
+        control={form.control}
+        name="mobile_number"
+        render={({ field }) => (
+            <FormItem>
+            <FormLabel>WhatsApp/Mobile Number / <span dir="rtl">رقم الواتساب/الجوال</span></FormLabel>
+            <FormControl>
+                <Input placeholder="e.g. 01700000000" {...field} />
+            </FormControl>
+            <FormMessage />
+            </FormItem>
+        )}
+        />
+        <FormItem>
+            <FormLabel>Email Address / <span dir="rtl">البريد الإلكتروني</span></FormLabel>
+            <FormControl>
+                <Input type="email" value={user?.email || ""} disabled />
+            </FormControl>
+        </FormItem>
+
+        <div className="flex justify-end pt-4">
+            <Button type="submit" disabled={form.formState.isSubmitting} className="w-full sm:w-auto">
+                {form.formState.isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {onboardingStatus === 'pending' 
+                    ? 'Complete Setup / إكمال الإعداد' 
+                    : 'Save Profile / حفظ الملف الشخصي'}
+            </Button>
         </div>
-      </AppLayout>
-    )
+        </form>
+    </Form>
+  );
+
+  if (onboardingStatus === 'pending') {
+    return (
+        <div className="flex min-h-screen items-center justify-center bg-muted/40 p-4">
+            <Card className="w-full max-w-2xl shadow-xl border-t-4 border-primary">
+                <CardHeader className="text-center">
+                    <CardTitle className="text-2xl md:text-3xl">
+                        Setup Your Retailer Profile
+                        <span dir="rtl" className="block mt-1">إعداد ملف التاجر الخاص بك</span>
+                    </CardTitle>
+                </CardHeader>
+                <CardContent className="p-6 sm:p-8">
+                    {FormContent}
+                </CardContent>
+            </Card>
+        </div>
+    );
   }
 
   return (
       <AppLayout title="Retailer Profile / ملف التاجر">
-      <Card className="max-w-2xl mx-auto shadow-lg rounded-xl">
-          <CardHeader>
-          <CardTitle>
-            Complete Your Profile / <span dir="rtl">أكمل ملفك الشخصي</span>
-          </CardTitle>
-          <CardDescription>
-            This information is required for your retailer account.
-            / <span dir="rtl">هذه المعلومات مطلوبة لحساب التاجر الخاص بك.</span>
-          </CardDescription>
-          </CardHeader>
-          <CardContent>
-          <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                <FormField
-                  control={form.control}
-                  name="shop_owner_name"
-                  render={({ field }) => (
-                      <FormItem>
-                      <FormLabel>Shop Owner Name / <span dir="rtl">اسم صاحب المحل</span></FormLabel>
-                      <FormControl>
-                          <Input placeholder="e.g. John Doe" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                      </FormItem>
-                  )}
-                />
-                 <FormField
-                  control={form.control}
-                  name="shop_name"
-                  render={({ field }) => (
-                  <FormItem>
-                      <FormLabel>Shop Name / <span dir="rtl">اسم المحل</span></FormLabel>
-                      <FormControl>
-                      <Input placeholder="e.g. The Gadget Store" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                  </FormItem>
-                  )}
-              />
-                <FormField
-                  control={form.control}
-                  name="shop_address"
-                  render={({ field }) => (
-                  <FormItem>
-                      <FormLabel>Shop Address / <span dir="rtl">عنوان المحل</span></FormLabel>
-                      <FormControl>
-                      <Input placeholder="Full shop address" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                  </FormItem>
-                  )}
-              />
-               <FormField
-                control={form.control}
-                name="mobile_number"
-                render={({ field }) => (
-                    <FormItem>
-                    <FormLabel>WhatsApp/Mobile Number / <span dir="rtl">رقم الواتساب/الجوال</span></FormLabel>
-                    <FormControl>
-                        <Input placeholder="e.g. 01700000000" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                    </FormItem>
-                )}
-                />
-                <FormItem>
-                    <FormLabel>Email Address / <span dir="rtl">البريد الإلكتروني</span></FormLabel>
-                    <FormControl>
-                        <Input type="email" value={user?.email || ""} disabled />
-                    </FormControl>
-                </FormItem>
-
-              <div className="flex justify-end">
-                  <Button type="submit" disabled={form.formState.isSubmitting}>
-                  {form.formState.isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  Save Profile / <span dir="rtl">حفظ الملف الشخصي</span>
-                  </Button>
-              </div>
-              </form>
-          </Form>
-          </CardContent>
-      </Card>
+        <Card className="max-w-2xl mx-auto shadow-lg rounded-xl">
+            <CardHeader>
+            <CardTitle>
+                Complete Your Profile / <span dir="rtl">أكمل ملفك الشخصي</span>
+            </CardTitle>
+            <CardDescription>
+                This information is required for your retailer account.
+                / <span dir="rtl">هذه المعلومات مطلوبة لحساب التاجر الخاص بك.</span>
+            </CardDescription>
+            </CardHeader>
+            <CardContent>
+                {FormContent}
+            </CardContent>
+        </Card>
       </AppLayout>
   );
 }
