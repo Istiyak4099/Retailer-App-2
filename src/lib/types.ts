@@ -6,6 +6,7 @@ export interface User {
   shop_name: string;
   shop_address: string;
   code_balance?: number;
+  is_riba_free_compliant?: boolean;
 }
 
 export interface Customer {
