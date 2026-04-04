@@ -25,10 +25,7 @@ import { cn } from "@/lib/utils";
 import { useEffect, useState, useCallback } from "react";
 import { db } from "@/lib/firebase";
 import { collection, query, where, getDocs, Timestamp, onSnapshot, doc } from "firebase/firestore";
-import { SessionData } from "@/lib/types";
-import { useRouter } from "next/navigation";
-
-const TEST_UID = "test-retailer-123";
+import { useAuth } from "@/hooks/use-auth";
 
 const StatCard = ({ icon: Icon, title, value, iconColor, href, loading }: { icon: React.ElementType, title: string, value: string | number, iconColor?: string, href: string, loading?: boolean }) => (
     <Link href={href} passHref className="h-full">
@@ -58,8 +55,8 @@ const ListItem = ({ icon: Icon, title, value, href, loading }: { icon: React.Ele
 )
 
 export default function DashboardPage() {
-  const router = useRouter();
-  const [session, setSession] = useState<SessionData | null>(null);
+  const { user } = useAuth();
+  const [retailer, setRetailer] = useState<any>(null);
   const [stats, setStats] = useState({
     today: 0,
     active: 0,
@@ -71,36 +68,13 @@ export default function DashboardPage() {
     total: 0,
   });
   const [loading, setLoading] = useState(true);
-  const [sessionLoading, setSessionLoading] = useState(true);
-
-  const fetchSession = useCallback(async () => {
-    try {
-      const response = await fetch('/api/auth/session');
-      if (response.status === 401) {
-        router.push('/login');
-        return;
-      }
-      if (response.ok) {
-        const data = await response.json();
-        setSession(data);
-      }
-    } catch (error) {
-      console.error('Error fetching session:', error);
-    } finally {
-      setSessionLoading(false);
-    }
-  }, [router]);
 
   useEffect(() => {
-    fetchSession();
-  }, [fetchSession]);
-
-  useEffect(() => {
-    if (!session) return;
+    if (!user) return;
     
     setLoading(true);
 
-    const q = query(collection(db, 'Customers'));
+    const q = query(collection(db, 'Customers'), where("uid", "==", user.uid));
     
     const unsubscribeCustomers = onSnapshot(q, (snapshot) => {
       let active = 0, pending = 0, locked = 0, unlocked = 0, removed = 0, total = 0;
@@ -124,6 +98,7 @@ export default function DashboardPage() {
 
       const emiQuery = query(
         collection(db, "EmiDetails"),
+        where("customerId", "in", snapshot.docs.map(d => d.id).length > 0 ? snapshot.docs.map(d => d.id) : ['dummy-id']),
         where("created_time", ">=", Timestamp.fromDate(today)),
         where("created_time", "<", Timestamp.fromDate(tomorrow))
       );
@@ -147,9 +122,14 @@ export default function DashboardPage() {
       setLoading(false);
     });
 
-    const unsubscribeUser = onSnapshot(doc(db, "Retailers", TEST_UID), (docSnap) => {
+    const unsubscribeUser = onSnapshot(doc(db, "Retailers", user.uid), (docSnap) => {
         if (docSnap.exists()) {
-            setStats(prev => ({ ...prev, balance: docSnap.data().key_balance || 0 }));
+            const retailerData = docSnap.data();
+            setRetailer(retailerData);
+            setStats(prev => ({ ...prev, balance: retailerData.key_balance || 0 }));
+        } else {
+            // New user, redirect to onboarding to create profile
+            // This might be handled in useAuth or a different place too
         }
     });
 
@@ -157,25 +137,7 @@ export default function DashboardPage() {
         unsubscribeCustomers();
         unsubscribeUser();
     };
-  }, [session]);
-
-  if (sessionLoading || !session) {
-    return (
-      <div className="flex h-screen w-full items-center justify-center">
-        <Loader2 className="h-10 w-10 animate-spin text-primary" />
-      </div>
-    );
-  }
-
-  const getRoleBadgeColor = (role: SessionData['role']) => {
-    switch (role) {
-      case 'Admin': return 'bg-red-500 hover:bg-red-600';
-      case 'Super': return 'bg-orange-500 hover:bg-orange-600';
-      case 'Distributor': return 'bg-blue-500 hover:bg-blue-600';
-      case 'Retailer': return 'bg-green-500 hover:bg-green-600';
-      default: return 'bg-gray-500';
-    }
-  };
+  }, [user]);
 
   const statCards = [
     { icon: CheckCircle, title: "Today Activation", value: stats.today, iconColor: "text-blue-500", href: "/customers/list?status=today" },
@@ -191,10 +153,7 @@ export default function DashboardPage() {
     <AppLayout title="Dashboard">
         <div className="space-y-6">
             <div className="flex items-center gap-2 mb-2">
-                <span className="text-sm text-muted-foreground">Welcome, {session.name}</span>
-                <Badge className={cn("text-white border-none text-[10px] px-2 py-0", getRoleBadgeColor(session.role))}>
-                    {session.role}
-                </Badge>
+                <span className="text-sm text-muted-foreground">Welcome, {user?.displayName}</span>
             </div>
 
             <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-7 gap-2">

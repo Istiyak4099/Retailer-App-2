@@ -20,15 +20,14 @@ import { db } from "@/lib/firebase";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { Building, Loader2, Mail, MapPin, Phone, User as UserIcon, CreditCard } from "lucide-react";
 import { useEffect, useState } from "react";
-import { User } from "@/lib/types";
+import { useAuth } from "@/hooks/use-auth";
 import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
-const TEST_UID = "test-retailer-123";
-
 const formSchema = z.object({
   shop_owner_name: z.string().min(2, "Owner name is required"),
-  mobile_number: z.string().regex(/^\d{11}$/, "Invalid 11-digit mobile number"),
+  mobile_number: z.string().min(10, "Valid mobile number is required"),
+  email_address: z.string().email(),
   shop_name: z.string().min(2, "Shop name is required"),
   shop_address: z.string().min(10, "Shop address is required"),
 });
@@ -47,6 +46,7 @@ const InfoRow = ({ icon: Icon, label, value }: { icon: React.ElementType, label:
 
 export default function OnboardingPage() {
   const { toast } = useToast();
+  const { user } = useAuth();
   const [userData, setUserData] = useState<any>(null);
   const [isNewUser, setIsNewUser] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -56,30 +56,34 @@ export default function OnboardingPage() {
     defaultValues: {
       shop_owner_name: "",
       mobile_number: "",
+      email_address: "",
       shop_name: "",
       shop_address: "",
     },
   });
 
   useEffect(() => {
+    if (!user) return;
     const fetchUserData = async () => {
       setLoading(true);
-      const userDocRef = doc(db, "Retailers", TEST_UID);
+      const userDocRef = doc(db, "Retailers", user.uid);
       const userDoc = await getDoc(userDocRef);
       if (userDoc.exists()) {
         const fetchedData = userDoc.data();
         setUserData(fetchedData);
         form.reset({
-          shop_owner_name: fetchedData.shop_owner_name || "",
-          mobile_number: fetchedData.mobile_number || "",
+          shop_owner_name: fetchedData.shop_owner_name || user.displayName || "",
+          mobile_number: fetchedData.mobile_number || user.phoneNumber || "",
+          email_address: fetchedData.email_address || user.email || "",
           shop_name: fetchedData.shop_name || "",
           shop_address: fetchedData.shop_address || "",
         });
         setIsNewUser(false);
       } else {
          form.reset({
-          shop_owner_name: "Test User",
-          mobile_number: "",
+          shop_owner_name: user.displayName || "",
+          mobile_number: user.phoneNumber || "",
+          email_address: user.email || "",
           shop_name: "",
           shop_address: ""
         });
@@ -88,22 +92,29 @@ export default function OnboardingPage() {
       setLoading(false);
     };
     fetchUserData();
-  }, [form]);
+  }, [user, form]);
 
 
   async function onSubmit(values: FormData) {
+    if (!user) return;
     try {
       const userPayload = {
         ...values,
-        email_address: "testuser@example.com",
+        uid: user.uid,
+        email_address: user.email, // Ensure email from auth is source of truth
         key_balance: isNewUser ? 10 : userData?.key_balance || 0,
       };
 
-      await setDoc(doc(db, "Retailers", TEST_UID), userPayload, { merge: true });
+      await setDoc(doc(db, "Retailers", user.uid), userPayload, { merge: true });
       
-      const updatedUserData = await getDoc(doc(db, "Retailers", TEST_UID));
+      const updatedUserData = await getDoc(doc(db, "Retailers", user.uid));
       setUserData(updatedUserData.data());
       setIsNewUser(false);
+      
+      toast({
+        title: "Profile Saved",
+        description: "Your information has been updated successfully.",
+      });
 
     } catch (error) {
       console.error("Error saving profile: ", error);
@@ -159,20 +170,26 @@ export default function OnboardingPage() {
                         <FormItem>
                         <FormLabel>Mobile Number</FormLabel>
                         <FormControl>
-                            <Input placeholder="11-digit mobile number" {...field} />
+                            <Input placeholder="e.g. 01700000000" {...field} />
                         </FormControl>
                         <FormMessage />
                         </FormItem>
                     )}
                     />
                 </div>
-                <FormItem>
-                    <FormLabel>Email Address</FormLabel>
-                    <FormControl>
-                        <Input type="email" value="testuser@example.com" disabled />
-                    </FormControl>
-                    <FormMessage />
+                <FormField
+                  control={form.control}
+                  name="email_address"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Email Address</FormLabel>
+                      <FormControl>
+                        <Input type="email" {...field} disabled />
+                      </FormControl>
+                      <FormMessage />
                     </FormItem>
+                  )}
+                />
                 <FormField
                     control={form.control}
                     name="shop_name"
@@ -219,7 +236,7 @@ export default function OnboardingPage() {
         <Card className="shadow-lg rounded-xl">
             <CardHeader className="flex flex-row items-center gap-4">
                 <Avatar className="h-16 w-16">
-                    <AvatarImage src={undefined} alt="User Profile" />
+                    <AvatarImage src={user?.photoURL || undefined} alt="User Profile" />
                     <AvatarFallback>
                         <UserIcon className="h-8 w-8" />
                     </AvatarFallback>

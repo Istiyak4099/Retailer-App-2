@@ -48,6 +48,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
+import { useAuth } from "@/hooks/use-auth";
 
 const InfoRow = ({ label, value }: { label: string; value: string | number | undefined | null }) => (
   <div className="flex justify-between py-2 border-b last:border-0">
@@ -65,6 +66,7 @@ export default function CustomerDetailPage() {
   const id = Array.isArray(params.id) ? params.id[0] : params.id;
   const router = useRouter();
   const { toast } = useToast();
+  const { user } = useAuth();
   
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [emiDetails, setEmiDetails] = useState<EmiDetails | null>(null);
@@ -73,14 +75,14 @@ export default function CustomerDetailPage() {
   const [isSendingReminder, setIsSendingReminder] = useState(false);
 
   useEffect(() => {
-    if (!id) return;
+    if (!id || !user) return;
     const fetchCustomerData = async () => {
       setLoading(true);
       try {
         const customerDocRef = doc(db, "Customers", id);
         const customerDoc = await getDoc(customerDocRef);
 
-        if (customerDoc.exists()) {
+        if (customerDoc.exists() && customerDoc.data().uid === user.uid) {
           const customerData = { id: customerDoc.id, ...customerDoc.data() } as Customer;
           setCustomer(customerData);
 
@@ -111,7 +113,7 @@ export default function CustomerDetailPage() {
       }
     };
     fetchCustomerData();
-  }, [id, toast]);
+  }, [id, toast, user]);
   
   const handleUpdateStatus = async (newStatus: Customer['status']) => {
     if (!customer) return;
@@ -169,7 +171,7 @@ export default function CustomerDetailPage() {
   };
 
   const handleSendReminder = async () => {
-    if (!customer) return;
+    if (!customer || !user) return;
     const targetAndroidId = emiDetails?.android_id || customer.android_id;
     if (!targetAndroidId) {
       toast({
@@ -189,6 +191,7 @@ export default function CustomerDetailPage() {
     const notificationData = {
       android_id: targetAndroidId,
       customerId: customer.id,
+      retailerId: user.uid,
       type: 'payment_reminder',
       message: 'Please pay your pending EMI to avoid device lock.',
       status: 'pending',

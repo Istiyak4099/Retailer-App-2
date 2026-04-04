@@ -1,4 +1,3 @@
-
 "use client";
 
 import React from "react";
@@ -28,7 +27,8 @@ import {
   Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/use-auth";
+import GlobalLoading from "@/app/loading";
 
 const mainNavItems = [
   { href: "/dashboard", icon: Home, label: "Dashboard" },
@@ -39,7 +39,6 @@ const mainNavItems = [
   { href: "/contact-support", icon: Headset, label: "Contact Support" },
 ];
 
-
 export function AppLayout({
   children,
   title,
@@ -49,37 +48,18 @@ export function AppLayout({
 }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { toast } = useToast();
+  const { user, loading, logout } = useAuth();
   const [isLoggingOut, setIsLoggingOut] = React.useState(false);
 
   const handleLogout = async () => {
     setIsLoggingOut(true);
-    try {
-      const response = await fetch('/api/auth/logout', {
-        method: 'POST',
-      });
-
-      if (response.ok) {
-        router.push('/login');
-      } else {
-        const data = await response.json();
-        toast({
-          variant: "destructive",
-          title: "Logout Failed",
-          description: data.error || "Could not log out. Please try again.",
-        });
-      }
-    } catch (error) {
-      console.error('Logout error:', error);
-      toast({
-        variant: "destructive",
-        title: "Logout Error",
-        description: "An unexpected error occurred during logout.",
-      });
-    } finally {
-      setIsLoggingOut(false);
-    }
+    await logout();
+    // The auth provider will handle the redirect
   };
+
+  if (loading || !user) {
+    return <GlobalLoading />;
+  }
 
   return (
     <SidebarProvider>

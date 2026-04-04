@@ -5,21 +5,25 @@ import { getFirestore, enableNetwork } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyDzfjJoXHXUxBxV8vQidAz7oFCEy5CSJTI",
-  authDomain: "retailer-emi-assist-kiwfo.firebaseapp.com",
-  projectId: "retailer-emi-assist-kiwfo",
-  storageBucket: "retailer-emi-assist-kiwfo.firebasestorage.app",
-  messagingSenderId: "167466574794",
-  appId: "1:167466574794:web:07102b06a5d2478c4ae533"
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID
 };
 
 // Initialize Firebase
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 const db = getFirestore(app);
 try {
+  // Note: enableNetwork() will fail if called after any other Firestore operations.
+  // It's safe to call multiple times, but good practice to handle the error.
   enableNetwork(db);
 } catch (error) {
-  console.log("Network already enabled or another error occurred:", error);
+  if ((error as any).code !== 'failed-precondition') {
+    console.error("Error enabling Firestore network:", error);
+  }
 }
 const auth = getAuth(app);
 const storage = getStorage(app);

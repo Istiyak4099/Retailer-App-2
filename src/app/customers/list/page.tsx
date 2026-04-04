@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useSearchParams } from 'next/navigation'
@@ -12,6 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { useEffect, useState, Suspense } from 'react';
 import { collection, getDocs, query, where, Timestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { useAuth } from '@/hooks/use-auth';
 
 function titleCase(str: string) {
   if (!str) return '';
@@ -25,15 +25,17 @@ function titleCase(str: string) {
 
 function CustomersListPageContent() {
   const searchParams = useSearchParams();
+  const { user } = useAuth();
   const status = searchParams.get('status');
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (!user) return;
     const fetchCustomers = async () => {
       setLoading(true);
       try {
-        let customerQuery = query(collection(db, 'Customers'));
+        let customerQuery = query(collection(db, 'Customers'), where('uid', '==', user.uid));
         
         if (status && status !== 'today') {
             customerQuery = query(customerQuery, where('status', '==', status));
@@ -43,7 +45,8 @@ function CustomersListPageContent() {
         let fetchedCustomers = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Customer));
 
         if (status === 'today') {
-            if (fetchedCustomers.length === 0) {
+            const customerIds = fetchedCustomers.map(c => c.id);
+            if (customerIds.length === 0) {
               setCustomers([]);
               setLoading(false);
               return;
@@ -54,12 +57,11 @@ function CustomersListPageContent() {
             const tomorrow = new Date(today);
             tomorrow.setDate(tomorrow.getDate() + 1);
 
-            // Note: Firestore 'in' filters have a limit of 30 items. 
-            // For a production app with many customers, this logic should be reversed 
-            // (query EmiDetails first, then fetch Customers).
+            // Firestore 'in' queries are limited to 30 items in the array.
+            // For larger datasets, this would need a different approach.
             const emiQuery = query(
               collection(db, "EmiDetails"),
-              where("customerId", "in", fetchedCustomers.map(c => c.id)),
+              where("customerId", "in", customerIds),
               where("created_time", ">=", Timestamp.fromDate(today)),
               where("created_time", "<", Timestamp.fromDate(tomorrow))
             );
@@ -78,7 +80,7 @@ function CustomersListPageContent() {
       }
     };
     fetchCustomers();
-  }, [status]);
+  }, [status, user]);
 
   let pageTitle = status ? `${titleCase(status)} Customers` : "All Customers";
   let pageDescription = status ? `A list of your customers with status: ${titleCase(status)}` : "Here's a list of all your EMI customers.";

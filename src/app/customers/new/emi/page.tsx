@@ -17,7 +17,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter, useSearchParams } from "next/navigation";
-import { CheckCircle, Loader2, AlertCircle, XCircle } from "lucide-react";
+import { CheckCircle, Loader2, XCircle } from "lucide-react";
 import { useState, Suspense } from "react";
 import Image from "next/image";
 import { db, storage } from "@/lib/firebase";
@@ -34,8 +34,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-
-const TEST_UID = "test-retailer-123";
+import { useAuth } from "@/hooks/use-auth";
 
 const fileSchema = z.any();
 
@@ -55,11 +54,13 @@ function NewEmiPageContent() {
   const { toast } = useToast();
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { user } = useAuth();
   const [nidFrontPreview, setNidFrontPreview] = useState<string | null>(null);
   const [nidBackPreview, setNidBackPreview] = useState<string | null>(null);
   const [livePhotoPreview, setLivePhotoPreview] = useState<string | null>(null);
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [formValues, setFormValues] = useState<z.infer<typeof formSchema> | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -85,14 +86,17 @@ function NewEmiPageContent() {
   };
 
   const checkBalance = async () => {
-    const userDocRef = doc(db, "Retailers", TEST_UID);
+    if (!user) return 0;
+    const userDocRef = doc(db, "Retailers", user.uid);
     const userDoc = await getDoc(userDocRef);
     if (!userDoc.exists()) return 0;
     return userDoc.data().key_balance || 0;
   };
 
   async function handleFinalSubmit() {
-    if (!formValues) return;
+    if (!formValues || !user) return;
+    
+    setIsSubmitting(true);
     
     try {
       // 1. Check Balance
@@ -109,6 +113,7 @@ function NewEmiPageContent() {
           description: "You do not have enough activation codes to create this profile. Please recharge.",
         });
         setIsConfirmOpen(false);
+        setIsSubmitting(false);
         return;
       }
 
@@ -132,7 +137,7 @@ function NewEmiPageContent() {
         android_id: searchParams.get('android_id'),
         address: searchParams.get('address'),
         status: "active" as const,
-        uid: TEST_UID,
+        uid: user.uid,
       };
 
       const customerRef = await addDoc(collection(db, "Customers"), customerData);
@@ -155,7 +160,7 @@ function NewEmiPageContent() {
       });
       
       // 5. Deduct Balance
-      await updateDoc(doc(db, "Retailers", TEST_UID), {
+      await updateDoc(doc(db, "Retailers", user.uid), {
         key_balance: increment(-1)
       });
 
@@ -163,6 +168,9 @@ function NewEmiPageContent() {
     } catch (error) {
         console.error("Error creating EMI:", error);
         toast({ variant: "destructive", title: "Error", description: "Failed to finalize activation." });
+    } finally {
+      setIsSubmitting(false);
+      setIsConfirmOpen(false);
     }
   }
 
@@ -341,7 +349,8 @@ function NewEmiPageContent() {
                 />
               </div>
               <div className="flex justify-end">
-                <Button type="submit">
+                <Button type="submit" disabled={form.formState.isSubmitting || isSubmitting}>
+                  {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                   Create EMI Plan <CheckCircle className="ml-2 h-4 w-4" />
                 </Button>
               </div>
@@ -359,8 +368,9 @@ function NewEmiPageContent() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleFinalSubmit} className="bg-primary text-primary-foreground">
+            <AlertDialogCancel disabled={isSubmitting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleFinalSubmit} className="bg-primary text-primary-foreground" disabled={isSubmitting}>
+              {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Confirm & Create
             </AlertDialogAction>
           </AlertDialogFooter>

@@ -7,17 +7,18 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { useToast } from "@/hooks/use-toast";
 import { QrCode, PlusCircle, CreditCard, Loader2, CheckCircle2 } from "lucide-react";
 import { db } from "@/lib/firebase";
-import { doc, onSnapshot, updateDoc, increment, setDoc, getDoc } from "firebase/firestore";
-
-const TEST_UID = "test-retailer-123";
+import { doc, onSnapshot, updateDoc, increment, setDoc } from "firebase/firestore";
+import { useAuth } from "@/hooks/use-auth";
 
 export default function CodeBalancePage() {
+  const { user } = useAuth();
   const [balance, setBalance] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
   useEffect(() => {
-    const docRef = doc(db, "Retailers", TEST_UID);
+    if (!user) return;
+    const docRef = doc(db, "Retailers", user.uid);
     
     const unsubscribe = onSnapshot(docRef, (docSnap) => {
       if (docSnap.exists()) {
@@ -28,16 +29,21 @@ export default function CodeBalancePage() {
         setDoc(docRef, { key_balance: 0 }, { merge: true });
       }
       setLoading(false);
+    }, (error) => {
+      console.error("Error fetching balance:", error);
+      setLoading(false);
     });
+
     return () => unsubscribe();
-  }, []);
+  }, [user]);
 
   const handleScan = () => {
     // Silent for scanner
   };
 
   const handleAddBalance = async () => {
-      const docRef = doc(db, "Retailers", TEST_UID);
+      if (!user) return;
+      const docRef = doc(db, "Retailers", user.uid);
       await updateDoc(docRef, {
           key_balance: increment(10)
       });
@@ -61,7 +67,7 @@ export default function CodeBalancePage() {
                     <CreditCard className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                    {loading ? (
+                    {loading || balance === null ? (
                         <Loader2 className="h-6 w-6 animate-spin text-primary" />
                     ) : (
                         <div className="text-2xl font-bold">{balance}</div>
