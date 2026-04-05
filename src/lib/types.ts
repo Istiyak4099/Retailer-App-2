@@ -1,4 +1,4 @@
-export interface User {
+export interface Retailer {
   uid: string; // Firebase Auth UID
   shop_owner_name: string;
   mobile_number: string;
@@ -6,7 +6,9 @@ export interface User {
   shop_name: string;
   shop_address: string;
   code_balance?: number;
+  key_balance?: number; // Noticed key_balance was in dashboard/balance page
   is_riba_free_compliant?: boolean;
+  isOnboarded?: boolean;
 }
 
 export interface Customer {
