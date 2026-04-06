@@ -5,16 +5,16 @@ import { AppLayout } from "@/components/app-layout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { QrCode, PlusCircle, CreditCard, Loader2, CheckCircle2 } from "lucide-react";
+import { QrCode, PlusCircle, CreditCard, Loader2, ShoppingCart } from "lucide-react";
 import { db } from "@/lib/firebase";
-import { doc, onSnapshot, updateDoc, increment, setDoc } from "firebase/firestore";
+import { doc, onSnapshot } from "firebase/firestore";
 import { useAuth } from "@/hooks/use-auth";
+import Link from "next/link";
 
-export default function CodeBalancePage() {
+export default function BalancePage() {
   const { user } = useAuth();
   const [balance, setBalance] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
-  const { toast } = useToast();
 
   useEffect(() => {
     if (!user) return;
@@ -24,9 +24,7 @@ export default function CodeBalancePage() {
       if (docSnap.exists()) {
         setBalance(docSnap.data().key_balance || 0);
       } else {
-        // Initialize if doesn't exist for testing
         setBalance(0);
-        setDoc(docRef, { key_balance: 0 }, { merge: true });
       }
       setLoading(false);
     }, (error) => {
@@ -37,33 +35,12 @@ export default function CodeBalancePage() {
     return () => unsubscribe();
   }, [user]);
 
-  const handleScan = () => {
-    // Silent for scanner
-  };
-
-  const handleAddBalance = async () => {
-      if (!user) return;
-      const docRef = doc(db, "Retailers", user.uid);
-      await updateDoc(docRef, {
-          key_balance: increment(10)
-      });
-      toast({
-          title: (
-            <div className="flex flex-col items-center gap-2">
-              <CheckCircle2 className="h-10 w-10 text-green-500" />
-              <span>Balance Added</span>
-            </div>
-          ),
-          description: "Added 10 codes for demonstration."
-      });
-  }
-
   return (
-    <AppLayout title="Code Balance">
+    <AppLayout title="Key Balance">
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
             <Card className="col-span-4 shadow-lg rounded-xl">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Available Codes</CardTitle>
+                    <CardTitle className="text-sm font-medium">Available Activation Keys</CardTitle>
                     <CreditCard className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
@@ -73,24 +50,22 @@ export default function CodeBalancePage() {
                         <div className="text-2xl font-bold">{balance}</div>
                     )}
                     <p className="text-xs text-muted-foreground">
-                        Each customer activation consumes one code.
+                        Each new customer activation consumes one key.
                     </p>
                 </CardContent>
             </Card>
             <Card className="col-span-3 shadow-lg rounded-xl">
                  <CardHeader className="pb-2">
                     <CardTitle>Actions</CardTitle>
-                    <CardDescription>Recharge your account balance.</CardDescription>
+                    <CardDescription>Recharge your account balance by purchasing more keys.</CardDescription>
                 </CardHeader>
                 <CardContent className="flex items-center gap-2">
-                     <Button className="w-full" onClick={handleScan}>
-                        <QrCode className="mr-2 h-4 w-4" />
-                        Scan Recharge Card
-                    </Button>
-                    <Button variant="secondary" onClick={handleAddBalance}>
-                        <PlusCircle className="mr-2 h-4 w-4" />
-                        Add Demo (10)
-                    </Button>
+                     <Link href="/pricing" passHref className="w-full">
+                        <Button className="w-full">
+                            <ShoppingCart className="mr-2 h-4 w-4" />
+                            Purchase More Keys
+                        </Button>
+                    </Link>
                 </CardContent>
             </Card>
         </div>
@@ -98,7 +73,7 @@ export default function CodeBalancePage() {
             <CardHeader>
                 <CardTitle>Usage History</CardTitle>
                 <CardDescription>
-                    Summary of your activation code usage.
+                    Summary of your activation key usage.
                 </CardDescription>
             </CardHeader>
             <CardContent>

@@ -3,7 +3,6 @@
 import { AppLayout } from "@/components/app-layout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import {
   KeyRound,
   UserPlus,
@@ -19,6 +18,7 @@ import {
   Trash2,
   CheckCircle,
   Loader2,
+  ShoppingCart,
 } from "lucide-react";
 import Link from 'next/link';
 import { cn } from "@/lib/utils";
@@ -162,15 +162,21 @@ export default function DashboardPage() {
                 ))}
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <Link href="/customers/new" passHref>
                     <Button className="w-full h-12 text-base font-semibold shadow-lg">
                         <UserPlus className="mr-2 h-5 w-5" />
                         Add Customer
                     </Button>
                 </Link>
-                <Link href="/install" passHref>
+                <Link href="/pricing" passHref>
                     <Button className="w-full h-12 text-base font-semibold shadow-lg" variant="secondary">
+                        <ShoppingCart className="mr-2 h-5 w-5" />
+                        Buy Keys
+                    </Button>
+                </Link>
+                <Link href="/install" passHref>
+                    <Button className="w-full h-12 text-base font-semibold shadow-lg" variant="outline">
                         <QrCode className="mr-2 h-5 w-5" />
                         Setup Device
                     </Button>

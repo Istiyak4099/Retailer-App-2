@@ -47,7 +47,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const router = useRouter();
   const pathname = usePathname();
-  const { toast } = useToast();
+  const { toast, dismiss } = useToast();
+
+  const handleClaimFreeKeys = async () => {
+    if (!user) return;
+    const userDocRef = doc(db, "Retailers", user.uid);
+    await setDoc(userDocRef, { key_balance: 5 }, { merge: true });
+    toast({
+        title: "Keys Claimed!",
+        description: "5 free keys have been added to your balance.",
+    });
+  }
+
+  const showClaimKeysToast = () => {
+      const { id } = toast({
+          title: "Welcome! Claim 5 free keys to start",
+          description: "Activate your first customers on us.",
+          duration: Infinity,
+          action: (
+              <Button
+                  onClick={() => {
+                      handleClaimFreeKeys();
+                      dismiss(id);
+                  }}
+                  className="bg-green-600 hover:bg-green-700 text-white mt-2 w-full"
+              >
+                Claim
+              </Button>
+          )
+      });
+  }
 
   useEffect(() => {
     let unsubscribeFirestore: (() => void) | null = null;
@@ -69,6 +98,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 setComplianceStatus("compliant");
                 if (data.isOnboarded) {
                   setOnboardingStatus("completed");
+                  if (data.key_balance === undefined) {
+                    showClaimKeysToast();
+                  }
                 } else {
                   setOnboardingStatus("pending");
                 }
@@ -109,6 +141,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const isAuthRoute = pathname === "/login";
     const isOnboardingRoute = pathname === "/onboarding";
     const isRootRoute = pathname === "/";
+    const isPricingRoute = pathname === "/pricing";
 
     if (loading || (user && (complianceStatus === 'loading' || onboardingStatus === 'loading'))) return;
 
@@ -117,7 +150,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } else if (complianceStatus === "compliant") {
        if (onboardingStatus === 'pending' && !isOnboardingRoute) {
          router.push('/onboarding');
-       } else if (onboardingStatus === 'completed' && (isAuthRoute || isRootRoute)) {
+       } else if (onboardingStatus === 'completed' && (isAuthRoute || isRootRoute || isOnboardingRoute)) {
          router.push('/dashboard');
        }
     }
