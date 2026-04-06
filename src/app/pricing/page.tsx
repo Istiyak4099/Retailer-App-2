@@ -16,12 +16,12 @@ export default function PricingPage() {
   const { user } = useAuth();
   const { toast } = useToast();
   const router = useRouter();
-  const [quantity, setQuantity] = useState(10);
+  const [quantity, setQuantity] = useState(5);
   const [loading, setLoading] = useState(false);
   const pricePerKey = 25;
 
   const handlePurchase = async () => {
-    if (!user || quantity <= 0) return;
+    if (!user || quantity < 5) return;
 
     setLoading(true);
 
@@ -81,8 +81,8 @@ export default function PricingPage() {
                 id="quantity"
                 type="number"
                 value={quantity}
-                onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
-                min="1"
+                onChange={(e) => setQuantity(Math.max(5, parseInt(e.target.value) || 5))}
+                min="5"
                 className="w-24 text-center"
               />
                <p className="text-lg font-bold">
@@ -94,7 +94,7 @@ export default function PricingPage() {
             </p>
           </CardContent>
           <CardFooter>
-            <Button className="w-full h-12 text-base" onClick={handlePurchase} disabled={loading}>
+            <Button className="w-full h-12 text-base" onClick={handlePurchase} disabled={loading || quantity < 5}>
               {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ShoppingCart className="mr-2 h-4 w-4" />}
               Buy {quantity} Keys
             </Button>
