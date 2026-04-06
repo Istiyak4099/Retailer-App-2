@@ -117,7 +117,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } else if (complianceStatus === "compliant") {
        if (onboardingStatus === 'pending' && !isOnboardingRoute) {
          router.push('/onboarding');
-       } else if (onboardingStatus === 'completed' && (isAuthRoute || isRootRoute || isOnboardingRoute)) {
+       } else if (onboardingStatus === 'completed' && (isAuthRoute || isRootRoute)) {
          router.push('/dashboard');
        }
     }

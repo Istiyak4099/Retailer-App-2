@@ -18,7 +18,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { useToast } from "@/hooks/use-toast";
 import { db } from "@/lib/firebase";
 import { doc, getDoc, setDoc } from "firebase/firestore";
-import { Loader2 } from "lucide-react";
+import { Edit, Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import GlobalLoading from "../loading";
@@ -33,10 +33,18 @@ const formSchema = z.object({
 
 type FormData = z.infer<typeof formSchema>;
 
+const DisplayRow = ({ label, value }: { label: string; value: string | undefined }) => (
+    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between py-3 border-b last:border-0">
+        <dt className="text-sm font-medium text-muted-foreground">{label}</dt>
+        <dd className="mt-1 text-sm text-foreground sm:mt-0 sm:text-right">{value || 'N/A'}</dd>
+    </div>
+);
+
 export default function OnboardingPage() {
   const { toast } = useToast();
   const { user, onboardingStatus, loading: authLoading } = useAuth();
   const [formLoading, setFormLoading] = useState(true);
+  const [isEditing, setIsEditing] = useState(false);
   const router = useRouter();
 
   const form = useForm<FormData>({
@@ -75,6 +83,13 @@ export default function OnboardingPage() {
     };
     fetchUserData();
   }, [user, form]);
+  
+  // When onboarding is completed, user should be in view mode by default.
+  useEffect(() => {
+    if (onboardingStatus === 'completed') {
+      setIsEditing(false);
+    }
+  }, [onboardingStatus]);
 
 
   async function onSubmit(values: FormData) {
@@ -94,8 +109,12 @@ export default function OnboardingPage() {
         title: "Profile Saved / تم حفظ الملف الشخصي",
         description: "Your information has been updated successfully.",
       });
-
-      // Redirection is now handled by the useAuth hook based on the updated state.
+      
+      if (onboardingStatus === 'pending') {
+        // Auth hook will redirect to dashboard
+      } else {
+        setIsEditing(false);
+      }
 
     } catch (error) {
       console.error("Error saving profile: ", error);
@@ -111,7 +130,7 @@ export default function OnboardingPage() {
     return <GlobalLoading />
   }
 
-  const FormContent = (
+  const FormContent = ({ onCancel }: { onCancel?: () => void }) => (
      <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
         <FormField
@@ -173,12 +192,17 @@ export default function OnboardingPage() {
             </FormControl>
         </FormItem>
 
-        <div className="flex justify-end pt-4">
+        <div className="flex justify-end pt-4 gap-4">
+            {onCancel && (
+                <Button type="button" variant="outline" onClick={onCancel} disabled={form.formState.isSubmitting}>
+                    Cancel
+                </Button>
+            )}
             <Button type="submit" disabled={form.formState.isSubmitting} className="w-full sm:w-auto">
                 {form.formState.isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 {onboardingStatus === 'pending' 
                     ? 'Complete Setup / إكمال الإعداد' 
-                    : 'Save Profile / حفظ الملف الشخصي'}
+                    : 'Save Profile'}
             </Button>
         </div>
         </form>
@@ -196,28 +220,50 @@ export default function OnboardingPage() {
                     </CardTitle>
                 </CardHeader>
                 <CardContent className="p-6 sm:p-8">
-                    {FormContent}
+                    <FormContent />
                 </CardContent>
             </Card>
         </div>
     );
   }
 
+  // Onboarding is completed, show profile view
   return (
-      <AppLayout title="Retailer Profile / ملف التاجر">
+      <AppLayout title="Retailer Profile">
         <Card className="max-w-2xl mx-auto shadow-lg rounded-xl">
-            <CardHeader>
-            <CardTitle>
-                Complete Your Profile / <span dir="rtl">أكمل ملفك الشخصي</span>
-            </CardTitle>
-            <CardDescription>
-                This information is required for your retailer account.
-                / <span dir="rtl">هذه المعلومات المطلوبة لحساب التاجر الخاص بك.</span>
-            </CardDescription>
-            </CardHeader>
-            <CardContent>
-                {FormContent}
-            </CardContent>
+            {isEditing ? (
+                 <>
+                    <CardHeader>
+                        <CardTitle>Edit Profile</CardTitle>
+                        <CardDescription>Update your retailer account information.</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                       <FormContent onCancel={() => setIsEditing(false)} />
+                    </CardContent>
+                </>
+            ) : (
+                <>
+                    <CardHeader className="flex flex-row items-start justify-between">
+                        <div>
+                            <CardTitle>Retailer Profile</CardTitle>
+                            <CardDescription>Your registered account information.</CardDescription>
+                        </div>
+                        <Button variant="outline" size="sm" onClick={() => setIsEditing(true)}>
+                            <Edit className="mr-2 h-4 w-4" />
+                            Edit Profile
+                        </Button>
+                    </CardHeader>
+                    <CardContent>
+                       <dl className="space-y-2">
+                           <DisplayRow label="Shop Owner Name" value={form.getValues("shop_owner_name")} />
+                           <DisplayRow label="Shop Name" value={form.getValues("shop_name")} />
+                           <DisplayRow label="Shop Address" value={form.getValues("shop_address")} />
+                           <DisplayRow label="WhatsApp/Mobile" value={form.getValues("mobile_number")} />
+                           <DisplayRow label="Email Address" value={user?.email || undefined} />
+                       </dl>
+                    </CardContent>
+                </>
+            )}
         </Card>
       </AppLayout>
   );
