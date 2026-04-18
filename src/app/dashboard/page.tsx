@@ -191,36 +191,6 @@ export default function DashboardPage() {
           <ListItem icon={Headset} title="Contact Support" href="#" />
         </div>
       </div>
-
-      <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-7 gap-2">
-        {statCards.map((card, index) => (
-          <StatCard key={index} {...card} loading={loading} />
-        ))}
-      </div>
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <Link href="/customers/new" passHref>
-          <Button className="w-full h-12 text-base font-semibold shadow-lg">
-            <UserPlus className="mr-2 h-5 w-5" />
-            Add Customer
-          </Button>
-        </Link>
-        <Link href="/install" passHref>
-          <Button className="w-full h-12 text-base font-semibold shadow-lg" variant="secondary">
-            <QrCode className="mr-2 h-5 w-5" />
-            Setup Device
-          </Button>
-        </Link>
-      </div>
-
-      <div className="space-y-2 pt-2">
-        <ListItem icon={Users} title="Total Customers" value={stats.total} href="/customers" loading={loading} />
-        <ListItem icon={KeyRound} title="Balance Keys" value={stats.balance} href="/balance" loading={loading} />
-        <ListItem icon={UserCircle} title="User Profile" href="/onboarding" />
-        <ListItem icon={Youtube} title="Installation Video" href="#" />
-        <ListItem icon={Headset} title="Contact Support" href="#" />
-      </div>
-    </div>
     </AppLayout >
   );
 }
