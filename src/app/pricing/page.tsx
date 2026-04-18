@@ -92,12 +92,12 @@ export default function PricingPage() {
           </CardHeader>
           <CardContent className="space-y-6">
             <div className="text-center">
-              <p className="text-4xl font-bold">১৯৯ ৳</p>
+              <p className="text-4xl font-bold">199 BDT</p>
               <p className="text-muted-foreground">per key</p>
             </div>
             <div className="flex items-center justify-center gap-4">
               <label htmlFor="quantity" className="text-sm font-medium">Quantity:</label>
-              <Input 
+              <Input
                 id="quantity"
                 type="number"
                 value={quantity}
@@ -106,24 +106,24 @@ export default function PricingPage() {
                 min="0"
                 className="w-24 text-center"
               />
-               <p className="text-lg font-bold whitespace-nowrap">
+              <p className="text-lg font-bold whitespace-nowrap">
                 Total: {total} ৳
               </p>
             </div>
             <div className="flex items-center justify-center gap-4 text-xs text-muted-foreground">
-                <div className="flex items-center gap-1">
-                  <Shield className="h-3.5 w-3.5 text-green-500" />
-                  <span>Secure Payment</span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <Zap className="h-3.5 w-3.5 text-yellow-500" />
-                  <span>Instant Delivery</span>
-                </div>
+              <div className="flex items-center gap-1">
+                <Shield className="h-3.5 w-3.5 text-green-500" />
+                <span>Secure Payment</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <Zap className="h-3.5 w-3.5 text-yellow-500" />
+                <span>Instant Delivery</span>
+              </div>
             </div>
           </CardContent>
           <CardFooter className="flex flex-col items-stretch gap-2">
             {showMinPurchaseError && (
-                <p className="text-sm text-destructive text-center">Minimum purchase is 5 keys.</p>
+              <p className="text-sm text-destructive text-center">Minimum purchase is 5 keys.</p>
             )}
             <Button className="w-full h-12 text-base" onClick={handlePurchase} disabled={loading || !isValid}>
               {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ShoppingCart className="mr-2 h-4 w-4" />}
