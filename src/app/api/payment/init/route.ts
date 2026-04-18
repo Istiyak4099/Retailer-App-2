@@ -62,6 +62,7 @@ export async function POST(request: NextRequest) {
         full_name: fullName,
         email: email,
         amount: amount.toString(),
+        currency: "BDT",
         metadata: {
           uid,
           quantity,
