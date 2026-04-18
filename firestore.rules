@@ -24,5 +24,13 @@ service cloud.firestore {
       allow create: if request.auth != null && request.resource.data.retailerId == request.auth.uid;
       allow read: if request.auth != null && resource.data.retailerId == request.auth.uid;
     }
+
+    match /Payments/{paymentId} {
+      // Users can read their own payment records (for history/receipts)
+      allow read: if request.auth != null && resource.data.uid == request.auth.uid;
+      // Writes are restricted to server-side only (Firebase Admin SDK)
+      // This prevents client-side manipulation of payment records
+      allow write: if false;
+    }
   }
 }
