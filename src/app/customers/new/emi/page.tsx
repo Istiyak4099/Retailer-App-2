@@ -110,7 +110,12 @@ function NewEmiPageContent() {
               <span>Insufficient Balance</span>
             </div>
           ),
-          description: "You do not have enough activation codes to create this profile. Please recharge.",
+          description: "You do not have enough activation keys to create this profile.",
+           action: (
+              <Button onClick={() => router.push('/pricing')} className="mt-4 w-full bg-white text-black hover:bg-slate-100">
+                  Buy Keys
+              </Button>
+          )
         });
         setIsConfirmOpen(false);
         setIsSubmitting(false);
@@ -364,7 +369,7 @@ function NewEmiPageContent() {
           <AlertDialogHeader>
             <AlertDialogTitle>Confirm Activation</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to activate this customer profile? One activation code will be used from your balance.
+              Are you sure you want to activate this customer profile? One activation key will be used from your balance.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

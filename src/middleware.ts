@@ -16,5 +16,6 @@ export const config = {
     '/balance/:path*',
     '/onboarding/:path*',
     '/install/:path*',
+    '/pricing/:path*',
   ],
 };

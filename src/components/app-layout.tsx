@@ -20,11 +20,11 @@ import {
   User,
   Bell,
   Youtube,
-  Share2,
   Headset,
   Users,
   ArrowLeft,
   Loader2,
+  ShoppingCart,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
@@ -34,6 +34,7 @@ const mainNavItems = [
   { href: "/dashboard", icon: Home, label: "Dashboard" },
   { href: "/customers", icon: Users, label: "Total Customers" },
   { href: "/balance", icon: CreditCard, label: "Balance Keys" },
+  { href: "/pricing", icon: ShoppingCart, label: "Buy Keys" },
   { href: "/onboarding", icon: User, label: "User Profile" },
   { href: "/installation-video", icon: Youtube, label: "Installation Video" },
   { href: "/contact-support", icon: Headset, label: "Contact Support" },

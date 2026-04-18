@@ -18,7 +18,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { useToast } from "@/hooks/use-toast";
 import { db } from "@/lib/firebase";
 import { doc, getDoc, setDoc } from "firebase/firestore";
-import { Loader2 } from "lucide-react";
+import { Edit, Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import GlobalLoading from "../loading";
@@ -33,10 +33,18 @@ const formSchema = z.object({
 
 type FormData = z.infer<typeof formSchema>;
 
+const DisplayRow = ({ label, value }: { label: string; value: string | undefined }) => (
+  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between py-3 border-b last:border-0">
+    <dt className="text-sm font-medium text-muted-foreground">{label}</dt>
+    <dd className="mt-1 text-sm text-foreground sm:mt-0 sm:text-right">{value || 'N/A'}</dd>
+  </div>
+);
+
 export default function OnboardingPage() {
   const { toast } = useToast();
   const { user, onboardingStatus, loading: authLoading } = useAuth();
   const [formLoading, setFormLoading] = useState(true);
+  const [isEditing, setIsEditing] = useState(false);
   const router = useRouter();
 
   const form = useForm<FormData>({
@@ -76,6 +84,13 @@ export default function OnboardingPage() {
     fetchUserData();
   }, [user, form]);
 
+  // When onboarding is completed, user should be in view mode by default.
+  useEffect(() => {
+    if (onboardingStatus === 'completed') {
+      setIsEditing(false);
+    }
+  }, [onboardingStatus]);
+
 
   async function onSubmit(values: FormData) {
     if (!user) return;
@@ -95,7 +110,11 @@ export default function OnboardingPage() {
         description: "Your information has been updated successfully.",
       });
 
-      // Redirection is now handled by the useAuth hook based on the updated state.
+      if (onboardingStatus === 'pending') {
+        // Auth hook will redirect to dashboard
+      } else {
+        setIsEditing(false);
+      }
 
     } catch (error) {
       console.error("Error saving profile: ", error);
@@ -203,6 +222,7 @@ export default function OnboardingPage() {
     );
   }
 
+  // Onboarding is completed, show profile view
   return (
     <AppLayout title="Retailer Profile / ملف التاجر">
       <Card className="max-w-2xl mx-auto shadow-lg rounded-xl">
