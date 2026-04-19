@@ -74,9 +74,9 @@ function NewEmiPageContent() {
       price: 0,
       down_payment: 0,
       installment_type: "Monthly",
-      number_of_emi: 6,
-      processing_fee: 199,
+      number_of_emi: 0,
       emi_monthly_amount: 0,
+      processing_fee: 199,
       nid_front: undefined,
       nid_back: undefined,
       live_photo: undefined,
@@ -116,9 +116,9 @@ function NewEmiPageContent() {
 
   async function handleFinalSubmit() {
     if (!formValues || !user) return;
-    
+
     setIsSubmitting(true);
-    
+
     try {
       // 1. Check Balance
       const balance = await checkBalance();
@@ -132,10 +132,10 @@ function NewEmiPageContent() {
             </div>
           ),
           description: "You do not have enough activation keys to create this profile.",
-           action: (
-              <Button onClick={() => router.push('/pricing')} className="mt-4 w-full bg-white text-black hover:bg-slate-100">
-                  Buy Keys
-              </Button>
+          action: (
+            <Button onClick={() => router.push('/pricing')} className="mt-4 w-full bg-white text-black hover:bg-slate-100">
+              Buy Keys
+            </Button>
           )
         });
         setIsConfirmOpen(false);
@@ -187,7 +187,7 @@ function NewEmiPageContent() {
         live_photo: livePhotoUrl || "",
         created_time: serverTimestamp(),
       });
-      
+
       // 5. Deduct Balance
       await updateDoc(doc(db, "Retailers", user.uid), {
         key_balance: increment(-1)
@@ -195,8 +195,8 @@ function NewEmiPageContent() {
 
       router.push(`/customers/${customerRef.id}`);
     } catch (error) {
-        console.error("Error creating EMI:", error);
-        toast({ variant: "destructive", title: "Error", description: "Failed to finalize activation." });
+      console.error("Error creating EMI:", error);
+      toast({ variant: "destructive", title: "Error", description: "Failed to finalize activation." });
     } finally {
       setIsSubmitting(false);
       setIsConfirmOpen(false);
@@ -221,7 +221,7 @@ function NewEmiPageContent() {
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
               <div className="grid grid-cols-1 gap-4">
-                 <FormField
+                <FormField
                   control={form.control}
                   name="product_name"
                   render={({ field }) => (
@@ -235,7 +235,7 @@ function NewEmiPageContent() {
                   )}
                 />
               </div>
-             
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
@@ -287,7 +287,7 @@ function NewEmiPageContent() {
                     </FormItem>
                   )}
                 />
-                
+
                 <FormField
                   control={form.control}
                   name="number_of_emi"

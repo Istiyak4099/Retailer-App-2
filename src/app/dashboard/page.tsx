@@ -83,10 +83,12 @@ export default function DashboardPage() {
         const customer = doc.data();
         total++;
         switch (customer.status) {
-          case 'active': active++; break;
+          case 'active':
+          case 'unlocked':
+            active++;
+            break;
           case 'pending': pending++; break;
           case 'locked': locked++; break;
-          case 'unlocked': unlocked++; break;
           case 'removed': removed++; break;
         }
       });
@@ -142,10 +144,9 @@ export default function DashboardPage() {
   const statCards = [
     { icon: CheckCircle, title: "Today Activation", value: stats.today, iconColor: "text-blue-500", href: "/customers/list?status=today" },
     { icon: Users, title: "Active Devices", value: stats.active, href: "/customers/list?status=active" },
-    { icon: KeyRound, title: "Balance Keys", value: stats.balance, href: "/balance" },
-    { icon: Hourglass, title: "Pending Devices", value: stats.pending, iconColor: "text-orange-500", href: "/customers/list?status=pending" },
+    { icon: Users, title: "Total Customers", value: stats.total, iconColor: "text-purple-500", href: "/customers" },
+    { icon: KeyRound, title: "Key Balance", value: stats.balance, href: "/balance" },
     { icon: Lock, title: "Locked Devices", value: stats.locked, iconColor: "text-red-500", href: "/customers/list?status=locked" },
-    { icon: Unlock, title: "Unlocked Devices", value: stats.unlocked, iconColor: "text-green-500", href: "/customers/list?status=unlocked" },
     { icon: Trash2, title: "Removed Devices", value: stats.removed, href: "/customers/list?status=removed" },
   ];
 
@@ -156,7 +157,7 @@ export default function DashboardPage() {
           <span className="text-sm text-muted-foreground">Welcome, {user?.displayName}</span>
         </div>
 
-        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-7 gap-2">
+        <div className="grid grid-cols-3 sm:grid-cols-3 md:grid-cols-6 gap-2">
           {statCards.map((card, index) => (
             <StatCard key={index} {...card} loading={loading} />
           ))}
@@ -184,8 +185,6 @@ export default function DashboardPage() {
         </div>
 
         <div className="space-y-2 pt-2">
-          <ListItem icon={Users} title="Total Customers" value={stats.total} href="/customers" loading={loading} />
-          <ListItem icon={KeyRound} title="Balance Keys" value={stats.balance} href="/balance" loading={loading} />
           <ListItem icon={UserCircle} title="User Profile" href="/onboarding" />
           <ListItem icon={Youtube} title="Installation Video" href="#" />
           <ListItem icon={Headset} title="Contact Support" href="#" />

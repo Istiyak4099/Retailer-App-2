@@ -137,7 +137,7 @@ export default function CustomerDetailPage() {
           toastMessage = "Command executed successfully.";
           Icon = Lock;
           iconColor = "text-red-500";
-        } else if (newStatus === 'unlocked') {
+        } else if (newStatus === 'active') {
           toastTitle = "Device Unlocked";
           toastMessage = "Command executed successfully.";
           Icon = Unlock;
@@ -452,7 +452,7 @@ export default function CustomerDetailPage() {
               className="w-full h-12 text-base font-bold"
             />
              <ActionButton
-              status="unlocked"
+              status="active"
               title="Confirm Device Unlock"
               description="This will instantly unlock the customer's device."
               buttonText="Unlock"
