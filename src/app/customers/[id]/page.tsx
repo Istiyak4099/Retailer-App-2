@@ -32,7 +32,7 @@ import { notFound, useParams, useRouter } from "next/navigation";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useEffect, useState } from "react";
 import { db } from "@/lib/firebase";
-import { collection, doc, getDoc, getDocs, query, updateDoc, where, addDoc, serverTimestamp } from "firebase/firestore";
+import { collection, doc, getDoc, getDocs, query, updateDoc, where, addDoc, serverTimestamp, increment } from "firebase/firestore";
 import { format } from 'date-fns';
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -73,6 +73,7 @@ export default function CustomerDetailPage() {
   const [loading, setLoading] = useState(true);
   const [isUpdating, setIsUpdating] = useState(false);
   const [isSendingReminder, setIsSendingReminder] = useState(false);
+  const [isLoggingPayment, setIsLoggingPayment] = useState(false);
 
   useEffect(() => {
     if (!id || !user) return;
@@ -223,6 +224,39 @@ export default function CustomerDetailPage() {
       });
   };
 
+  const handleLogPayment = async () => {
+    if (!emiDetails || !user) return;
+    if (emiDetails.number_of_emi <= 0) {
+      toast({ variant: "destructive", title: "Wait", description: "All installments have been marked as paid." });
+      return;
+    }
+    
+    setIsLoggingPayment(true);
+    try {
+      const emiDocRef = doc(db, "EmiDetails", emiDetails.id);
+      await updateDoc(emiDocRef, {
+        number_of_emi: increment(-1)
+      });
+      
+      setEmiDetails(prev => prev ? { ...prev, number_of_emi: prev.number_of_emi - 1 } : null);
+      
+      toast({
+        title: (
+          <div className="flex flex-col items-center gap-2">
+            <CheckCircle2 className="h-10 w-10 text-green-500" />
+            <span>Payment Logged</span>
+          </div>
+        ),
+        description: "1 Installment has been decremented successfully.",
+      });
+    } catch (error) {
+      console.error("Error logging payment:", error);
+      toast({ variant: "destructive", title: "Error", description: "Failed to log payment." });
+    } finally {
+      setIsLoggingPayment(false);
+    }
+  };
+
 
   if (loading) {
     return (
@@ -320,12 +354,39 @@ export default function CustomerDetailPage() {
               <InfoRow label="Android ID" value={emiDetails?.android_id || customer.android_id} />
 
               <SectionTitle>Loan Information</SectionTitle>
-              <InfoRow label="Product Price" value={emiDetails?.price ? `₹${emiDetails.price.toLocaleString()}`: 'N/A'} />
-              <InfoRow label="Processing Fee" value={emiDetails?.processing_fee ? `₹${emiDetails.processing_fee.toLocaleString()}` : 'N/A'} />
-              <InfoRow label="Down Payment" value={emiDetails?.down_payment ? `₹${emiDetails.down_payment.toLocaleString()}` : 'N/A'} />
-              <InfoRow label="Total EMI" value={emiDetails?.total_emi ? `₹${emiDetails.total_emi.toLocaleString()}` : 'N/A'} />
-              <InfoRow label="Monthly EMI" value={emiDetails?.emi_monthly_amount ? `₹${emiDetails.emi_monthly_amount.toLocaleString()}` : 'N/A'} />
-              <InfoRow label="Number of EMIs" value={emiDetails?.number_of_emi} />
+              <InfoRow label="Product Price" value={emiDetails?.price ? `${emiDetails.price.toLocaleString()} BDT`: 'N/A'} />
+              <InfoRow label="Processing Fee" value={emiDetails?.processing_fee ? `${emiDetails.processing_fee.toLocaleString()} BDT` : 'N/A'} />
+              <InfoRow label="Down Payment" value={emiDetails?.down_payment ? `${emiDetails.down_payment.toLocaleString()} BDT` : 'N/A'} />
+              <InfoRow label="Total Value" value={emiDetails?.total_emi ? `${emiDetails.total_emi.toLocaleString()} BDT` : 'N/A'} />
+              <InfoRow label="Installment Type" value={emiDetails?.installment_type || 'N/A'} />
+              <InfoRow label="Installment Amount" value={emiDetails?.emi_monthly_amount ? `${emiDetails.emi_monthly_amount.toLocaleString()} BDT` : 'N/A'} />
+              <div className="flex justify-between py-2 border-b items-center last:border-0">
+                <dt className="text-muted-foreground">Remaining Installments</dt>
+                <div className="flex items-center gap-4">
+                  <dd className="font-semibold">{emiDetails?.number_of_emi !== undefined ? emiDetails.number_of_emi : 'N/A'}</dd>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="outline" size="sm" className="h-7 text-xs border-primary text-primary" disabled={!emiDetails || emiDetails.number_of_emi <= 0 || isLoggingPayment}>
+                        {isLoggingPayment ? <Loader2 className="mr-1 h-3 w-3 animate-spin"/> : null}
+                        Log Payment
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Log Payment?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          This will mark 1 installment as paid and decrement the remaining counter.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleLogPayment}>Confirm</AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </div>
+              </div>
+              <InfoRow label="Next Payment Date" value={emiDetails?.date_of_next_payment ? format(emiDetails.date_of_next_payment.toDate ? emiDetails.date_of_next_payment.toDate() : new Date(emiDetails.date_of_next_payment), 'PP') : 'N/A'} />
               <InfoRow label="Loan ID" value={emiDetails?.id} />
               <InfoRow label="Activation Date" value={emiDetails?.created_time ? format(emiDetails.created_time, 'PP') : 'N/A'} />
 

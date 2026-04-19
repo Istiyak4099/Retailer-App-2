@@ -1,6 +1,6 @@
 "use client";
 
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { AppLayout } from "@/components/app-layout";
@@ -15,11 +15,14 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter, useSearchParams } from "next/navigation";
-import { CheckCircle, Loader2, XCircle } from "lucide-react";
-import { useState, Suspense } from "react";
-import Image from "next/image";
+import { CheckCircle, Loader2, XCircle, CalendarIcon, UploadCloud } from "lucide-react";
+import { useState, Suspense, useEffect } from "react";
 import { db, storage } from "@/lib/firebase";
 import { addDoc, collection, doc, getDoc, serverTimestamp, updateDoc, increment } from "firebase/firestore";
 import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
@@ -35,16 +38,21 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useAuth } from "@/hooks/use-auth";
+import { cn } from "@/lib/utils";
 
 const fileSchema = z.any();
 
 const formSchema = z.object({
   product_name: z.string().min(2, "Product name is required"),
   price: z.coerce.number().min(1, "Price must be greater than 0"),
-  processing_fee: z.coerce.number().optional(),
-  down_payment: z.coerce.number().optional(),
-  number_of_emi: z.coerce.number().int().min(1, "At least 1 EMI is required"),
-  emi_monthly_amount: z.coerce.number().min(1, "Monthly EMI is required"),
+  down_payment: z.coerce.number().default(0),
+  installment_type: z.enum(["Weekly", "Monthly"]).default("Monthly"),
+  number_of_emi: z.coerce.number().int().min(1, "At least 1 Installment is required"),
+  date_of_next_payment: z.date({
+    required_error: "Date of next payment is required.",
+  }),
+  emi_monthly_amount: z.coerce.number(),
+  processing_fee: z.coerce.number().default(199),
   nid_front: fileSchema.optional(),
   nid_back: fileSchema.optional(),
   live_photo: fileSchema.optional(),
@@ -55,9 +63,6 @@ function NewEmiPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user } = useAuth();
-  const [nidFrontPreview, setNidFrontPreview] = useState<string | null>(null);
-  const [nidBackPreview, setNidBackPreview] = useState<string | null>(null);
-  const [livePhotoPreview, setLivePhotoPreview] = useState<string | null>(null);
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [formValues, setFormValues] = useState<z.infer<typeof formSchema> | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -67,15 +72,31 @@ function NewEmiPageContent() {
     defaultValues: {
       product_name: "",
       price: 0,
-      processing_fee: 0,
       down_payment: 0,
+      installment_type: "Monthly",
       number_of_emi: 6,
+      processing_fee: 199,
       emi_monthly_amount: 0,
       nid_front: undefined,
       nid_back: undefined,
       live_photo: undefined,
     },
   });
+
+  const price = useWatch({ control: form.control, name: 'price' });
+  const down_payment = useWatch({ control: form.control, name: 'down_payment' });
+  const number_of_emi = useWatch({ control: form.control, name: 'number_of_emi' });
+
+  useEffect(() => {
+    const p = Number(price) || 0;
+    const dp = Number(down_payment) || 0;
+    const n = Number(number_of_emi) || 1;
+    let monthly = 0;
+    if (n > 0) {
+      monthly = (p - dp) / n;
+    }
+    form.setValue('emi_monthly_amount', isNaN(monthly) ? 0 : Math.round(monthly), { shouldValidate: true });
+  }, [price, down_payment, number_of_emi, form]);
 
   const uploadFile = async (fileList: FileList | undefined) => {
     if (!fileList || fileList.length === 0) return null;
@@ -131,7 +152,8 @@ function NewEmiPageContent() {
 
       const price = formValues.price || 0;
       const down_payment = formValues.down_payment || 0;
-      const processing_fee = formValues.processing_fee || 0;
+      const processing_fee = formValues.processing_fee || 199;
+      // Processing fee is excluded from monthly divisions, but usually added to total.
       const total_emi = price - down_payment + processing_fee;
 
       // 3. Create Customer
@@ -155,12 +177,14 @@ function NewEmiPageContent() {
         price: price,
         processing_fee: processing_fee,
         down_payment: down_payment,
+        installment_type: formValues.installment_type,
         number_of_emi: formValues.number_of_emi,
+        date_of_next_payment: formValues.date_of_next_payment,
         emi_monthly_amount: formValues.emi_monthly_amount,
         total_emi: total_emi,
-        nid_front: nidFrontUrl,
-        nid_back: nidBackUrl,
-        live_photo: livePhotoUrl,
+        nid_front: nidFrontUrl || "",
+        nid_back: nidBackUrl || "",
+        live_photo: livePhotoUrl || "",
         created_time: serverTimestamp(),
       });
       
@@ -184,26 +208,13 @@ function NewEmiPageContent() {
     setIsConfirmOpen(true);
   }
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, setter: (url: string | null) => void) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setter(reader.result as string);
-      };
-      reader.readAsDataURL(file);
-    } else {
-      setter(null);
-    }
-  };
-
   return (
     <AppLayout title="New EMI Details">
       <Card className="max-w-2xl mx-auto shadow-lg rounded-xl">
         <CardHeader>
           <CardTitle>EMI Details (Step 2/2)</CardTitle>
           <CardDescription>
-            Enter the financial details for the EMI plan and upload required documents.
+            Enter the financial details for the EMI plan.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -231,9 +242,9 @@ function NewEmiPageContent() {
                   name="price"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Price</FormLabel>
+                      <FormLabel>Price (BDT)</FormLabel>
                       <FormControl>
-                        <Input type="number" placeholder="0.00" {...field} />
+                        <Input type="number" placeholder="0" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -241,38 +252,48 @@ function NewEmiPageContent() {
                 />
                 <FormField
                   control={form.control}
-                  name="processing_fee"
+                  name="down_payment"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Processing Fee</FormLabel>
+                      <FormLabel>Down Payment (BDT)</FormLabel>
                       <FormControl>
-                        <Input type="number" placeholder="0.00" {...field} />
+                        <Input type="number" placeholder="0" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
               </div>
+
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                 <FormField
+                <FormField
                   control={form.control}
-                  name="down_payment"
+                  name="installment_type"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Down Payment</FormLabel>
-                      <FormControl>
-                        <Input type="number" placeholder="0.00" {...field} />
-                      </FormControl>
+                      <FormLabel>Installment Type</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select type" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="Weekly">Weekly</SelectItem>
+                          <SelectItem value="Monthly">Monthly</SelectItem>
+                        </SelectContent>
+                      </Select>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
-                 <FormField
+                
+                <FormField
                   control={form.control}
                   name="number_of_emi"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Number of EMIs</FormLabel>
+                      <FormLabel>Number of Installments</FormLabel>
                       <FormControl>
                         <Input type="number" placeholder="e.g. 6" {...field} />
                       </FormControl>
@@ -280,80 +301,103 @@ function NewEmiPageContent() {
                     </FormItem>
                   )}
                 />
+
+                <FormField
+                  control={form.control}
+                  name="date_of_next_payment"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-col pt-2.5">
+                      <FormLabel className="mb-1.5">Date of Next Payment</FormLabel>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <FormControl>
+                            <Button
+                              variant={"outline"}
+                              className={cn(
+                                "w-full pl-3 text-left font-normal",
+                                !field.value && "text-muted-foreground"
+                              )}
+                            >
+                              {field.value ? (
+                                format(field.value, "PPP")
+                              ) : (
+                                <span>Pick a date</span>
+                              )}
+                              <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                            </Button>
+                          </FormControl>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <Calendar
+                            mode="single"
+                            selected={field.value}
+                            onSelect={field.onChange}
+                            disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
+                            initialFocus
+                          />
+                        </PopoverContent>
+                      </Popover>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-t pt-4">
                 <FormField
                   control={form.control}
                   name="emi_monthly_amount"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Monthly EMI</FormLabel>
+                      <FormLabel>Installment Amount (Calculated)</FormLabel>
                       <FormControl>
-                        <Input type="number" placeholder="0.00" {...field} />
+                        <Input className="bg-muted font-bold" type="number" readOnly {...field} />
                       </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="processing_fee"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Processing Fee</FormLabel>
+                      <FormControl>
+                        <Input className="bg-muted font-bold" type="number" readOnly {...field} />
+                      </FormControl>
+                      <p className="text-xs text-muted-foreground mt-1 leading-snug">
+                        * This fee covers the digital key cost for device management; this amount is collected from the customer.
+                      </p>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
               </div>
-              <div className="space-y-4">
-                <FormField
-                  control={form.control}
-                  name="nid_front"
-                  render={({ field: { onChange, value, ...rest } }) => (
-                    <FormItem>
-                      <FormLabel>NID Front Side</FormLabel>
-                      {nidFrontPreview && (
-                         <Image src={nidFrontPreview} alt="NID Front Preview" width={300} height={200} className="rounded-lg w-full object-contain h-48" />
-                      )}
-                      <FormControl>
-                        <Input type="file" {...rest} onChange={(e) => {
-                            onChange(e.target.files);
-                            handleFileChange(e, setNidFrontPreview);
-                        }} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="nid_back"
-                  render={({ field: { onChange, value, ...rest } }) => (
-                    <FormItem>
-                      <FormLabel>NID Back Side</FormLabel>
-                      {nidBackPreview && (
-                         <Image src={nidBackPreview} alt="NID Back Preview" width={300} height={200} className="rounded-lg w-full object-contain h-48" />
-                      )}
-                      <FormControl>
-                         <Input type="file" {...rest} onChange={(e) => {
-                            onChange(e.target.files);
-                            handleFileChange(e, setNidBackPreview);
-                         }} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                 <FormField
-                  control={form.control}
-                  name="live_photo"
-                  render={({ field: { onChange, value, ...rest } }) => (
-                    <FormItem>
-                      <FormLabel>Customer's Live Photo</FormLabel>
-                      {livePhotoPreview && (
-                         <Image src={livePhotoPreview} alt="Live Photo Preview" width={300} height={200} className="rounded-lg w-full object-contain h-48" />
-                      )}
-                      <FormControl>
-                        <Input type="file" accept="image/*" capture="user" {...rest} onChange={(e) => {
-                            onChange(e.target.files);
-                            handleFileChange(e, setLivePhotoPreview);
-                        }} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+
+              <div className="space-y-4 border-t pt-4">
+                <div>
+                  <FormLabel>Media Uploads</FormLabel>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-2">
+                    <Button type="button" variant="outline" className="h-24 w-full flex-col gap-2" disabled title="This feature is coming soon">
+                      <UploadCloud className="h-6 w-6 text-muted-foreground" />
+                      <span className="text-xs text-muted-foreground">Upload NID Front</span>
+                    </Button>
+                    <Button type="button" variant="outline" className="h-24 w-full flex-col gap-2" disabled title="This feature is coming soon">
+                      <UploadCloud className="h-6 w-6 text-muted-foreground" />
+                      <span className="text-xs text-muted-foreground">Upload NID Back</span>
+                    </Button>
+                    <Button type="button" variant="outline" className="h-24 w-full flex-col gap-2" disabled title="This feature is coming soon">
+                      <UploadCloud className="h-6 w-6 text-muted-foreground" />
+                      <span className="text-xs text-muted-foreground">Take Live Photo</span>
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-2">Uploading documents feature will be available in an upcoming update.</p>
+                </div>
               </div>
-              <div className="flex justify-end">
+
+              <div className="flex justify-end pt-4">
                 <Button type="submit" disabled={form.formState.isSubmitting || isSubmitting}>
                   {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                   Create EMI Plan <CheckCircle className="ml-2 h-4 w-4" />
