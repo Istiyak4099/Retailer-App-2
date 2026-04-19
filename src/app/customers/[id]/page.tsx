@@ -498,7 +498,7 @@ export default function CustomerDetailPage() {
               status="removed"
               title="Confirm Customer Removal"
               description="This will remove the customer and release the device from control. This cannot be undone."
-              buttonText="Remove Device"
+              buttonText="Release Device"
               variant="outline"
               icon={Trash2}
               className="w-full h-12 text-base font-bold col-span-2 mt-2"

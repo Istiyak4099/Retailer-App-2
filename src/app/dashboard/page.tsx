@@ -142,12 +142,12 @@ export default function DashboardPage() {
   }, [user]);
 
   const statCards = [
+    { icon: Users, title: "Total Customers", value: stats.total, iconColor: "text-purple-500", href: "/customers" },
     { icon: CheckCircle, title: "Today Activation", value: stats.today, iconColor: "text-blue-500", href: "/customers/list?status=today" },
     { icon: Users, title: "Active Devices", value: stats.active, href: "/customers/list?status=active" },
-    { icon: Users, title: "Total Customers", value: stats.total, iconColor: "text-purple-500", href: "/customers" },
     { icon: KeyRound, title: "Key Balance", value: stats.balance, href: "/balance" },
     { icon: Lock, title: "Locked Devices", value: stats.locked, iconColor: "text-red-500", href: "/customers/list?status=locked" },
-    { icon: Trash2, title: "Removed Devices", value: stats.removed, href: "/customers/list?status=removed" },
+    { icon: Trash2, title: "Released Devices", value: stats.removed, href: "/customers/list?status=removed" },
   ];
 
   return (
