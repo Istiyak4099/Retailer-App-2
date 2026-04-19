@@ -164,6 +164,12 @@ export default function DashboardPage() {
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <Link href="/install" passHref>
+            <Button className="w-full h-12 text-base font-semibold shadow-lg" variant="outline">
+              <QrCode className="mr-2 h-5 w-5" />
+              Setup Device
+            </Button>
+          </Link>
           <Link href="/customers/new" passHref>
             <Button className="w-full h-12 text-base font-semibold shadow-lg">
               <UserPlus className="mr-2 h-5 w-5" />
@@ -176,17 +182,12 @@ export default function DashboardPage() {
               Buy Keys
             </Button>
           </Link>
-          <Link href="/install" passHref>
-            <Button className="w-full h-12 text-base font-semibold shadow-lg" variant="outline">
-              <QrCode className="mr-2 h-5 w-5" />
-              Setup Device
-            </Button>
-          </Link>
+
         </div>
 
         <div className="space-y-2 pt-2">
           <ListItem icon={UserCircle} title="User Profile" href="/onboarding" />
-          <ListItem icon={Youtube} title="Installation Video" href="#" />
+          <ListItem icon={Youtube} title="Installation Guide" href="#" />
           <ListItem icon={Headset} title="Contact Support" href="#" />
         </div>
       </div>
