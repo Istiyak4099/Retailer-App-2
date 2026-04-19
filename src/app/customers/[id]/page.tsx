@@ -33,7 +33,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useEffect, useState } from "react";
 import { db } from "@/lib/firebase";
 import { collection, doc, getDoc, getDocs, query, updateDoc, where, addDoc, serverTimestamp, increment } from "firebase/firestore";
-import { format } from 'date-fns';
+import { format, addMonths, addWeeks } from 'date-fns';
 import { useToast } from "@/hooks/use-toast";
 import {
   AlertDialog,
@@ -233,12 +233,25 @@ export default function CustomerDetailPage() {
     
     setIsLoggingPayment(true);
     try {
+      const currentNextDate = emiDetails.date_of_next_payment.toDate 
+        ? emiDetails.date_of_next_payment.toDate() 
+        : new Date(emiDetails.date_of_next_payment);
+      
+      const newNextDate = emiDetails.installment_type === 'Weekly' 
+        ? addWeeks(currentNextDate, 1) 
+        : addMonths(currentNextDate, 1);
+
       const emiDocRef = doc(db, "EmiDetails", emiDetails.id);
       await updateDoc(emiDocRef, {
-        number_of_emi: increment(-1)
+        number_of_emi: increment(-1),
+        date_of_next_payment: newNextDate
       });
       
-      setEmiDetails(prev => prev ? { ...prev, number_of_emi: prev.number_of_emi - 1 } : null);
+      setEmiDetails(prev => prev ? { 
+        ...prev, 
+        number_of_emi: prev.number_of_emi - 1,
+        date_of_next_payment: newNextDate
+      } : null);
       
       toast({
         title: (
@@ -247,7 +260,7 @@ export default function CustomerDetailPage() {
             <span>Payment Logged</span>
           </div>
         ),
-        description: "1 Installment has been decremented successfully.",
+        description: `Installment decremented. Next payment: ${format(newNextDate, 'PP')}`,
       });
     } catch (error) {
       console.error("Error logging payment:", error);
