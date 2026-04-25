@@ -18,22 +18,19 @@ import { auth, db } from "@/lib/firebase";
 import { doc, onSnapshot, setDoc } from "firebase/firestore";
 import { useRouter, usePathname } from "next/navigation";
 import GlobalLoading from "@/app/loading";
-import { ComplianceModal } from "@/components/auth/compliance-modal";
 import { useToast } from "./use-toast";
 import { Button } from "@/components/ui/button";
 
-type AuthStatus = "loading" | "compliant" | "pending" | "unauthenticated";
+type AuthStatus = "loading" | "unauthenticated" | "authenticated";
 type OnboardingStatus = "loading" | "pending" | "completed";
 
 interface AuthContextType {
   user: FirebaseUser | null;
   loading: boolean;
-  complianceStatus: AuthStatus;
+  authStatus: AuthStatus;
   onboardingStatus: OnboardingStatus;
   signInWithGoogle: () => Promise<void>;
   logout: () => Promise<void>;
-  handleComplianceConfirm: () => Promise<void>;
-  handleComplianceDeny: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -41,17 +38,16 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<FirebaseUser | null>(null);
   const [loading, setLoading] = useState(true);
-  const [complianceStatus, setComplianceStatus] = useState<AuthStatus>("loading");
+  const [authStatus, setAuthStatus] = useState<AuthStatus>("loading");
   const [onboardingStatus, setOnboardingStatus] = useState<OnboardingStatus>("loading");
-  const [actionLoading, setActionLoading] = useState(false);
 
   const router = useRouter();
   const pathname = usePathname();
   const { toast, dismiss } = useToast();
 
-  const handleClaimFreeKeys = async () => {
-    if (!user) return;
-    const userDocRef = doc(db, "Retailers", user.uid);
+  const handleClaimFreeKeys = async (uid: string) => {
+    if (!uid) return;
+    const userDocRef = doc(db, "Retailers", uid);
     await setDoc(userDocRef, { key_balance: 5 }, { merge: true });
     toast({
         title: "Keys Claimed!",
@@ -59,7 +55,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
   }
 
-  const showClaimKeysToast = () => {
+  const showClaimKeysToast = (uid: string) => {
       const { id } = toast({
           title: "Welcome! Claim 5 free keys to start",
           description: "Activate your first customers on us.",
@@ -67,7 +63,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           action: (
               <Button
                   onClick={() => {
-                      handleClaimFreeKeys();
+                      handleClaimFreeKeys(uid);
                       dismiss(id);
                   }}
                   className="bg-green-600 hover:bg-green-700 text-white mt-2 w-full"
@@ -94,36 +90,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           (docSnap) => {
             if (docSnap.exists()) {
               const data = docSnap.data();
-              if (data.is_riba_free_compliant) {
-                setComplianceStatus("compliant");
-                if (data.isOnboarded) {
-                  setOnboardingStatus("completed");
-                  if (data.key_balance === undefined) {
-                    showClaimKeysToast();
-                  }
-                } else {
-                  setOnboardingStatus("pending");
+              setAuthStatus("authenticated");
+              if (data.isOnboarded) {
+                setOnboardingStatus("completed");
+                if (data.key_balance === undefined) {
+                  showClaimKeysToast(firebaseUser.uid);
                 }
               } else {
-                setComplianceStatus("pending");
                 setOnboardingStatus("pending");
               }
             } else {
-              setComplianceStatus("pending");
+              setAuthStatus("authenticated");
               setOnboardingStatus("pending");
             }
             setLoading(false);
           },
           (error) => {
             console.error("Error with Firestore snapshot listener:", error);
-            setComplianceStatus("pending");
+            setAuthStatus("unauthenticated");
             setOnboardingStatus("pending");
             setLoading(false);
           }
         );
       } else {
         setUser(null);
-        setComplianceStatus("unauthenticated");
+        setAuthStatus("unauthenticated");
         setOnboardingStatus("pending"); // Fix: Set to pending, not loading
         setLoading(false);
       }
@@ -143,18 +134,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const isRootRoute = pathname === "/";
     const isPricingRoute = pathname === "/pricing";
 
-    if (loading || (user && (complianceStatus === 'loading' || onboardingStatus === 'loading'))) return;
+    if (loading || (user && (authStatus === 'loading' || onboardingStatus === 'loading'))) return;
 
-    if (complianceStatus === "unauthenticated" && !isAuthRoute) {
+    if (authStatus === "unauthenticated" && !isAuthRoute) {
       router.push("/login");
-    } else if (complianceStatus === "compliant") {
+    } else if (authStatus === "authenticated") {
        if (onboardingStatus === 'pending' && !isOnboardingRoute) {
          router.push('/onboarding');
        } else if (onboardingStatus === 'completed' && (isAuthRoute || isRootRoute || isOnboardingRoute)) {
          router.push('/dashboard');
        }
     }
-  }, [complianceStatus, onboardingStatus, loading, user, pathname, router]);
+  }, [authStatus, onboardingStatus, loading, user, pathname, router]);
 
   const signInWithGoogle = async () => {
     const provider = new GoogleAuthProvider();
@@ -180,51 +171,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
   
-  const handleComplianceConfirm = async () => {
-    if (!user) return;
-    setActionLoading(true);
-    try {
-      const userDocRef = doc(db, "Retailers", user.uid);
-      await setDoc(userDocRef, { is_riba_free_compliant: true, uid: user.uid }, { merge: true });
-      // State will be updated by the onSnapshot listener.
-    } catch (error) {
-      console.error("Error saving compliance status:", error);
-    } finally {
-      setActionLoading(false);
-    }
-  };
-
-  const handleComplianceDeny = () => {
-    toast({
-      variant: "destructive",
-      title: "Access Restricted / وصول محدود",
-      description: "Our system is currently only available for zero-interest business models. / نظامنا متاح حالياً فقط لنماذج الأعمال التي لا تتعامل بالربا.",
-      duration: Infinity,
-      action: (
-        <Button
-          variant="secondary"
-          onClick={logout}
-          className="mt-4 w-full bg-white text-black hover:bg-white/90"
-        >
-          Exit / خروج
-        </Button>
-      ),
-    });
-  };
-
-  const value = { user, loading, complianceStatus, onboardingStatus, signInWithGoogle, logout, handleComplianceConfirm, handleComplianceDeny };
+  const value = { user, loading, authStatus, onboardingStatus, signInWithGoogle, logout };
   
-  const showGlobalLoading = loading || (user && (complianceStatus === 'loading' || onboardingStatus === 'loading'));
+  const showGlobalLoading = loading || (user && (authStatus === 'loading' || onboardingStatus === 'loading'));
   if (showGlobalLoading) {
     return <GlobalLoading />;
-  }
-
-  if (complianceStatus === "pending") {
-    return (
-       <AuthContext.Provider value={value}>
-         <ComplianceModal loading={actionLoading} />
-       </AuthContext.Provider>
-    );
   }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

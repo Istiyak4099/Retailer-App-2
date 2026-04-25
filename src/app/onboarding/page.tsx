@@ -99,7 +99,6 @@ export default function OnboardingPage() {
         ...values,
         uid: user.uid,
         email_address: user.email,
-        is_riba_free_compliant: true,
         isOnboarded: true,
       };
 
