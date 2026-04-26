@@ -165,7 +165,7 @@ export default function DashboardPage() {
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <Link href="/install" passHref>
-            <Button className="w-full h-12 text-base font-semibold shadow-lg" variant="outline">
+            <Button className="w-full h-12 text-base font-semibold shadow-lg bg-green-600 hover:bg-green-700 text-white">
               <QrCode className="mr-2 h-5 w-5" />
               Setup Device
             </Button>
@@ -177,7 +177,7 @@ export default function DashboardPage() {
             </Button>
           </Link>
           <Link href="/pricing" passHref>
-            <Button className="w-full h-12 text-base font-semibold shadow-lg" variant="secondary">
+            <Button className="w-full h-12 text-base font-semibold shadow-lg bg-slate-500 hover:bg-slate-600 text-white">
               <ShoppingCart className="mr-2 h-5 w-5" />
               Buy Keys
             </Button>
