@@ -25,12 +25,24 @@ import {
   CheckCircle2,
   AlertCircle,
   UserMinus,
+  Copy,
+  Smartphone,
+  Key,
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound, useParams, useRouter } from "next/navigation";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+  DialogClose,
+} from "@/components/ui/dialog";
 import { db } from "@/lib/firebase";
 import { collection, doc, getDoc, getDocs, query, updateDoc, where, addDoc, serverTimestamp, increment } from "firebase/firestore";
 import { format, addMonths, addWeeks } from 'date-fns';
@@ -49,6 +61,7 @@ import {
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
 import { useAuth } from "@/hooks/use-auth";
+import { generateOfflineResponse } from "@/lib/offline-unlock";
 
 const InfoRow = ({ label, value }: { label: string; value: string | number | undefined | null }) => (
   <div className="flex justify-between py-2 border-b last:border-0">
@@ -74,6 +87,42 @@ export default function CustomerDetailPage() {
   const [isUpdating, setIsUpdating] = useState(false);
   const [isSendingReminder, setIsSendingReminder] = useState(false);
   const [isLoggingPayment, setIsLoggingPayment] = useState(false);
+  const [isOfflineLockOpen, setIsOfflineLockOpen] = useState(false);
+  const [copied, setCopied] = useState(false);
+  
+  const [isOfflineUnlockOpen, setIsOfflineUnlockOpen] = useState(false);
+  const [challenge, setChallenge] = useState('');
+  const [responseCode, setResponseCode] = useState<string | null>(null);
+  const [isGeneratingResponse, setIsGeneratingResponse] = useState(false);
+
+  const SMS_COMMAND = "EMI-LOCK-S1dr4x@2024";
+
+  const handleCopyCommand = useCallback(async () => {
+    try {
+      await navigator.clipboard.writeText(SMS_COMMAND);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      toast({ variant: "destructive", title: "Error", description: "Failed to copy command." });
+    }
+  }, [toast]);
+
+  const handleGenerateResponse = async () => {
+    const trimmed = challenge.trim().toUpperCase();
+    if (trimmed.length < 6 || trimmed.length > 8) {
+      toast({ variant: "destructive", title: "Invalid Challenge", description: "Challenge must be 6-8 characters" });
+      return;
+    }
+    setIsGeneratingResponse(true);
+    try {
+      const code = await generateOfflineResponse(trimmed);
+      setResponseCode(code);
+    } catch (error) {
+      toast({ variant: "destructive", title: "Error", description: "Failed to generate response." });
+    } finally {
+      setIsGeneratingResponse(false);
+    }
+  };
 
   useEffect(() => {
     if (!id || !user) return;
@@ -493,6 +542,133 @@ export default function CustomerDetailPage() {
                 <MapPin className="mr-2 h-4 w-4" />Track
               </Button>
             </Link>
+
+            <Button
+              variant="outline"
+              className="w-full h-12 text-base font-bold border-orange-500 text-orange-500 hover:bg-orange-500/10"
+              onClick={() => { setCopied(false); setIsOfflineLockOpen(true); }}
+            >
+              <Smartphone className="mr-2 h-4 w-4" />
+              Offline Lock
+            </Button>
+
+            <Dialog open={isOfflineLockOpen} onOpenChange={setIsOfflineLockOpen}>
+              <DialogContent className="sm:max-w-md">
+                <DialogHeader>
+                  <DialogTitle className="flex items-center gap-2">
+                    <Lock className="h-5 w-5 text-orange-500" />
+                    Offline Lock via SMS
+                  </DialogTitle>
+                  <DialogDescription>
+                    Send this command as an SMS from your phone to lock the customer's device offline.
+                  </DialogDescription>
+                </DialogHeader>
+
+                <div className="space-y-4 py-2">
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1">SMS Command</p>
+                    <div className="flex items-center gap-2 bg-muted rounded-lg p-3 border">
+                      <code className="flex-1 text-xl md:text-2xl font-bold tracking-wider text-center select-all">
+                        {SMS_COMMAND}
+                      </code>
+                    </div>
+                  </div>
+
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1">Send to</p>
+                    <div className="flex items-center gap-2 bg-muted rounded-lg p-3 border">
+                      <Phone className="h-4 w-4 text-primary shrink-0" />
+                      <span className="text-lg font-semibold select-all">
+                        {customer.mobile_number || 'N/A'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <DialogFooter className="flex-col sm:flex-row gap-2">
+                  <Button
+                    onClick={handleCopyCommand}
+                    className={`w-full sm:w-auto font-bold transition-colors ${
+                      copied
+                        ? 'bg-green-600 hover:bg-green-700 text-white'
+                        : 'bg-orange-500 hover:bg-orange-600 text-white'
+                    }`}
+                  >
+                    {copied ? (
+                      <><CheckCircle2 className="mr-2 h-4 w-4" />Copied!</>
+                    ) : (
+                      <><Copy className="mr-2 h-4 w-4" />Copy Command</>
+                    )}
+                  </Button>
+                  <DialogClose asChild>
+                    <Button variant="outline" className="w-full sm:w-auto">Close</Button>
+                  </DialogClose>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+
+            <Button
+              variant="outline"
+              className="w-full h-12 text-base font-bold border-emerald-500 text-emerald-500 hover:bg-emerald-500/10"
+              onClick={() => { setChallenge(''); setResponseCode(null); setIsOfflineUnlockOpen(true); }}
+            >
+              <Key className="mr-2 h-4 w-4" />
+              Offline Unlock
+            </Button>
+
+            <Dialog open={isOfflineUnlockOpen} onOpenChange={setIsOfflineUnlockOpen}>
+              <DialogContent className="sm:max-w-md">
+                <DialogHeader>
+                  <DialogTitle className="flex items-center gap-2">
+                    <Key className="h-5 w-5 text-emerald-500" />
+                    Offline Unlock
+                  </DialogTitle>
+                  <DialogDescription>
+                    Enter the challenge code shown on the customer's lock screen to generate an unlock response.
+                  </DialogDescription>
+                </DialogHeader>
+
+                <div className="space-y-4 py-2">
+                  <div>
+                    <label className="text-sm font-medium text-muted-foreground">
+                      Challenge Code
+                    </label>
+                    <input
+                      type="text"
+                      value={challenge}
+                      onChange={(e) => setChallenge(e.target.value.toUpperCase())}
+                      placeholder="e.g. KP7N3XMT"
+                      maxLength={8}
+                      className="w-full h-12 px-3 border border-input rounded-md mt-1 text-center text-2xl font-mono tracking-widest uppercase focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-background text-foreground shadow-sm"
+                    />
+                  </div>
+                  
+                  <Button
+                    onClick={handleGenerateResponse}
+                    disabled={isGeneratingResponse || challenge.trim().length < 6}
+                    className="w-full h-12 text-base font-bold bg-emerald-600 hover:bg-emerald-700 text-white"
+                  >
+                    {isGeneratingResponse ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                    Generate Response
+                  </Button>
+
+                  {responseCode && (
+                    <div className="mt-4 p-4 bg-emerald-50 dark:bg-emerald-950/30 rounded-lg text-center border border-emerald-200 dark:border-emerald-900">
+                      <p className="text-sm font-medium text-emerald-800 dark:text-emerald-300 mb-1">Tell this code to the customer:</p>
+                      <p className="text-4xl font-mono font-black text-emerald-700 dark:text-emerald-400 tracking-[0.2em]">
+                        {responseCode}
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                <DialogFooter>
+                  <DialogClose asChild>
+                    <Button variant="outline" className="w-full">Close</Button>
+                  </DialogClose>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
 
             <ActionButton
               status="removed"
