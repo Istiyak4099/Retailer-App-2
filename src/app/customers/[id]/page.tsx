@@ -108,9 +108,9 @@ export default function CustomerDetailPage() {
   }, [toast]);
 
   const handleGenerateResponse = async () => {
-    const trimmed = challenge.trim().toUpperCase();
-    if (trimmed.length < 6 || trimmed.length > 8) {
-      toast({ variant: "destructive", title: "Invalid Challenge", description: "Challenge must be 6-8 characters" });
+    const trimmed = challenge.trim();
+    if (trimmed.length !== 6 || !/^\d{6}$/.test(trimmed)) {
+      toast({ variant: "destructive", title: "Invalid Challenge", description: "Challenge must be a 6-digit number" });
       return;
     }
     setIsGeneratingResponse(true);
@@ -636,9 +636,9 @@ export default function CustomerDetailPage() {
                     <input
                       type="text"
                       value={challenge}
-                      onChange={(e) => setChallenge(e.target.value.toUpperCase())}
-                      placeholder="e.g. KP7N3XMT"
-                      maxLength={8}
+                      onChange={(e) => setChallenge(e.target.value)}
+                      placeholder="e.g. 127926"
+                      maxLength={6}
                       className="w-full h-12 px-3 border border-input rounded-md mt-1 text-center text-2xl font-mono tracking-widest uppercase focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-background text-foreground shadow-sm"
                     />
                   </div>

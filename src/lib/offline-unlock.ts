@@ -4,28 +4,27 @@ import crypto from 'crypto';
 
 const HMAC_SECRET = 'S1dr4x-EMI-L0ck-2024!@#';
 
+const RESPONSE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+const RESPONSE_LENGTH = 8;
+
 /**
- * Generate the 6-digit response code for a given challenge.
+ * Generate the 8-character response code for a given challenge.
  * 
- * Algorithm: HMAC-SHA256(HMAC_SECRET, challenge) → dynamic truncation → 6 digits
- * This matches the Android OfflineUnlockKeyGenerator.computeResponse() exactly.
- *
- * @param challenge - The 8-character challenge code shown on the device
- * @returns 6-digit zero-padded response string
+ * @param challenge - The 6-digit challenge code shown on the device
+ * @returns 8-character alphanumeric response string
  */
 export async function generateOfflineResponse(challenge: string): Promise<string> {
-  const hash = crypto
-    .createHmac('sha256', HMAC_SECRET)
-    .update(challenge, 'utf8')
-    .digest();
+    // 1. Create an HMAC-SHA256 hash using the shared secret
+    const hmac = crypto.createHmac('sha256', HMAC_SECRET);
+    hmac.update(challenge, 'utf8');
+    const hash = hmac.digest(); // Returns a Buffer of bytes
 
-  // Dynamic truncation (RFC 4226 style)
-  const offset = hash[hash.length - 1] & 0x0f;
-  const code =
-    ((hash[offset] & 0x7f) << 24) |
-    ((hash[offset + 1] & 0xff) << 16) |
-    ((hash[offset + 2] & 0xff) << 8) |
-    (hash[offset + 3] & 0xff);
-
-  return String(code % 1_000_000).padStart(6, '0');
+    // 2. Map the first 8 bytes of the hash to our allowed character set
+    let response = "";
+    for (let i = 0; i < RESPONSE_LENGTH; i++) {
+        const byteValue = hash[i]; 
+        response += RESPONSE_CHARS[byteValue % RESPONSE_CHARS.length];
+    }
+    
+    return response;
 }
